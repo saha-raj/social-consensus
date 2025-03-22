@@ -40,7 +40,10 @@ class OpinionVisualizer {
         this.opinionPlotWidth = this.opinionPlotContainer.node().clientWidth;
         this.opinionPlotHeight = this.opinionPlotContainer.node().clientHeight || 500;
         
-        this.margin = { top: 40, right: 40, bottom: 60, left: 60 };
+        this.margin = { top: 20, right: 40, bottom: 30, left: 60 };
+        
+        // Each plot gets half the container height
+        this.plotHeight = (this.opinionPlotHeight / 2) - 20;  // -20 for gap between plots
         
         // Set up color scales for opinions
         this.colorScale = d3.scaleLinear()
@@ -55,7 +58,14 @@ class OpinionVisualizer {
             
         this.opinionPlotSvg = this.opinionPlotContainer.append('svg')
             .attr('width', this.opinionPlotWidth)
-            .attr('height', this.opinionPlotHeight)
+            .attr('height', this.opinionPlotHeight)  // Use full height
+            .style('background-color', '#fff');
+            
+        this.histogramSvg = this.opinionPlotContainer.append('svg')
+            .attr('width', this.opinionPlotWidth)
+            .attr('height', this.plotHeight)
+            .style('position', 'absolute')  // Add absolute positioning
+            .style('top', `${this.plotHeight + 40}px`)  // Position below first plot with gap
             .style('background-color', '#fff');
             
         // Create a group for the agent pool visualization - CENTERED POSITIONING
@@ -72,10 +82,14 @@ class OpinionVisualizer {
         this.pairingLinesGroup = this.agentPoolGroup.append('g')
             .attr('class', 'pairing-lines');
             
-        // Create a group for the opinion plot
+        // Create groups for both plots with proper vertical positioning
         this.opinionPlotGroup = this.opinionPlotSvg.append('g')
             .attr('class', 'opinion-plot')
             .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+        
+        this.histogramGroup = this.opinionPlotSvg.append('g')
+            .attr('class', 'histogram')
+            .attr('transform', `translate(${this.margin.left}, ${this.opinionPlotHeight/2 + this.margin.top})`);
         
         // Set up the force simulation for agent movement
         this.setupForceSimulation();
@@ -127,7 +141,10 @@ class OpinionVisualizer {
             .attr('height', this.agentPoolHeight);
             
         this.opinionPlotSvg
-            .attr('height', this.opinionPlotHeight);
+            .attr('height', this.plotHeight);
+            
+        this.histogramSvg
+            .attr('height', this.plotHeight);
             
         // Update group positions - CENTERED POSITIONING
         this.agentPoolGroup
@@ -138,6 +155,9 @@ class OpinionVisualizer {
         
         // Update the opinion plot
         this.updateOpinionPlot();
+        
+        // Update the histogram
+        this.updateHistogram();
         
         // Update the visualization
         if (this.simulation) {
@@ -290,7 +310,7 @@ class OpinionVisualizer {
                     .attr('y1', sourceData.y)
                     .attr('x2', targetData.x)
                     .attr('y2', targetData.y)
-                    .attr('stroke', '#333')
+                    .attr('stroke', '#8d99ae')
                     .attr('stroke-width', 2)
                     .attr('stroke-opacity', 0.8);
             }
@@ -323,7 +343,7 @@ class OpinionVisualizer {
                         (d.source.id === sourceId && d.target.id === targetId) || 
                         (d.source.id === targetId && d.target.id === sourceId)
                     )
-                    .attr('stroke', '#333')
+                    .attr('stroke', '#8d99ae')
                     .attr('stroke-width', 2.5)
                     .attr('stroke-opacity', 0.9);
             }
@@ -336,7 +356,7 @@ class OpinionVisualizer {
     setupOpinionPlot() {
         // Calculate plot dimensions
         const plotWidth = this.opinionPlotWidth - this.margin.left - this.margin.right;
-        const plotHeight = this.opinionPlotHeight - this.margin.top - this.margin.bottom;
+        const plotHeight = this.plotHeight - this.margin.top - this.margin.bottom;
         
         // Create scales
         this.xScale = d3.scaleLinear()
@@ -397,36 +417,38 @@ class OpinionVisualizer {
             .attr('stroke', '#00a6fb')
             .attr('stroke-width', 2);
             
-        // Add legend
+        // Add legend with circular markers and current values
         const legend = this.opinionPlotGroup.append('g')
             .attr('class', 'legend')
-            .attr('transform', `translate(${plotWidth - 100}, 20)`);
+            .attr('transform', `translate(${plotWidth - 100}, 10)`);  // Move up from 20 to 10
             
         // Red opinion legend
-        legend.append('rect')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('width', 15)
-            .attr('height', 15)
+        legend.append('circle')
+            .attr('cx', 7)
+            .attr('cy', 7)
+            .attr('r', 7)
             .attr('fill', '#ef476f');
             
         legend.append('text')
             .attr('x', 20)
-            .attr('y', 12)
-            .text('Red Opinion');
+            .attr('y', 10)
+            .attr('fill', '#666')
+            .style('font-size', '14px')
+            .text('50%');  // Remove 'Red'
             
         // Blue opinion legend
-        legend.append('rect')
-            .attr('x', 0)
-            .attr('y', 25)
-            .attr('width', 15)
-            .attr('height', 15)
+        legend.append('circle')
+            .attr('cx', 7)
+            .attr('cy', 32)
+            .attr('r', 7)
             .attr('fill', '#00a6fb');
             
         legend.append('text')
             .attr('x', 20)
-            .attr('y', 37)
-            .text('Blue Opinion');
+            .attr('y', 35)
+            .attr('fill', '#666')
+            .style('font-size', '14px')
+            .text('50%');  // Remove 'Blue'
     }
     
     /**
@@ -463,6 +485,107 @@ class OpinionVisualizer {
             
         this.opinionPlotGroup.select('.blue-line')
             .attr('d', this.blueLine(history));
+
+        // Update legend values with current proportions
+        const lastState = history[history.length - 1];
+        this.opinionPlotGroup.select('.legend')
+            .selectAll('text')
+            .each(function(d, i) {
+                const value = i === 0 ? lastState.redProportion : lastState.blueProportion;
+                d3.select(this).text(`${Math.round(value * 100)}%`);
+            });
+    }
+    
+    /**
+     * Add new method for histogram setup
+     */
+    setupHistogram() {
+        const plotWidth = this.opinionPlotWidth - this.margin.left - this.margin.right;
+        const plotHeight = this.plotHeight - this.margin.top - this.margin.bottom;
+        
+        // Create scales
+        this.histXScale = d3.scaleLinear()
+            .domain([-1.05, 1.05])  // Extend to 1.3 to ensure all values are captured
+            .range([0, plotWidth]);
+            
+        this.histYScale = d3.scaleLinear()
+            .range([plotHeight, 0]);
+            
+        // Create axes
+        this.histXAxis = this.histogramGroup.append('g')
+            .attr('class', 'x-axis')
+            .attr('transform', `translate(0, ${plotHeight})`)
+            .call(d3.axisBottom(this.histXScale));
+            
+        this.histYAxis = this.histogramGroup.append('g')
+            .attr('class', 'y-axis')
+            .call(d3.axisLeft(this.histYScale).ticks(5));  // Reduce to 5 ticks
+            
+        // Add x-axis label
+        this.histogramGroup.append('text')
+            .attr('class', 'x-axis-label')
+            .attr('x', plotWidth / 2)
+            .attr('y', plotHeight + 40)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#444')
+            .style('font-size', '12px')
+            .text('Belief Value');
+    }
+    
+    /**
+     * Add method to update histogram
+     */
+    updateHistogram() {
+        if (!this.simulation) return;
+        
+        const plotWidth = this.opinionPlotWidth - this.margin.left - this.margin.right;
+        const plotHeight = this.plotHeight - this.margin.top - this.margin.bottom;
+        
+        // Separate agents by opinion
+        const redAgents = this.simulation.agents.filter(a => a.beliefValue < 0);
+        const blueAgents = this.simulation.agents.filter(a => a.beliefValue >= 0);
+
+        const binWidth = 0.1;  // Fixed bin width
+        const maxHeight = this.simulation.config.populationSize / 2;  // Fixed y-axis height
+
+        // Single histogram for all values
+        const histogram = d3.histogram()
+            .domain([-1.3, 1.3])  // Match the x-axis scale
+            .thresholds(d3.range(-1.3, 1.3 + binWidth, binWidth));
+
+        // Generate histogram data
+        const redBins = histogram(redAgents.map(a => a.beliefValue));
+        const blueBins = histogram(blueAgents.map(a => a.beliefValue));
+
+        // Set fixed y scale
+        const maxCount = d3.max([...redBins, ...blueBins], d => d.length);
+        const roundedMax = Math.ceil(maxCount / (this.simulation.config.populationSize/10)) * (this.simulation.config.populationSize/10);
+        this.histYScale.domain([0, roundedMax]);
+        this.histYAxis.call(d3.axisLeft(this.histYScale).ticks(5));
+        
+        // Update bars
+        const updateBars = (data, className, color) => {
+            const bars = this.histogramGroup.selectAll(`.${className}`)
+                .data(data);
+                
+            // Remove old bars
+            bars.exit().remove();
+            
+            // Add new bars
+            bars.enter()
+                .append('rect')
+                .attr('class', className)
+                .merge(bars)
+                .attr('x', d => this.histXScale(d.x0))
+                .attr('y', d => this.histYScale(d.length))
+                .attr('width', d => Math.max(0, this.histXScale(d.x1) - this.histXScale(d.x0) - 1))
+                .attr('height', d => plotHeight - this.histYScale(d.length))
+                .attr('fill', color)
+                .attr('opacity', 0.5);
+        };
+        
+        updateBars(redBins, 'red-bars', '#ef476f');
+        updateBars(blueBins, 'blue-bars', '#00a6fb');
     }
     
     /**
@@ -550,8 +673,17 @@ class OpinionVisualizer {
             .alpha(1)
             .restart();
         
-        // Initialize the opinion plot
+        // Clear existing elements
+        this.opinionPlotGroup.selectAll('*').remove();
+        this.histogramGroup.selectAll('*').remove();
+        
+        // Setup both plots
+        this.setupOpinionPlot();
+        this.setupHistogram();
+        
+        // Initial updates
         this.updateOpinionPlot();
+        this.updateHistogram();
     }
     
     /**
@@ -587,6 +719,9 @@ class OpinionVisualizer {
         // Update the opinion plot
         this.updateOpinionPlot();
         
+        // Update the histogram
+        this.updateHistogram();
+        
         // Update the force simulation
         this.forceSimulation.alpha(0.3).restart();
     }
@@ -596,24 +731,8 @@ class OpinionVisualizer {
      * @param {Object} stats - Final simulation statistics
      */
     displayFinalState(stats) {
-        // Update the visualization
+        // Update the visualization without adding final state text
         this.update(stats);
-        
-        // Add final state annotation to the opinion plot
-        const history = stats.opinionHistory;
-        if (history.length === 0) return;
-        
-        const lastState = history[history.length - 1];
-        const plotWidth = this.opinionPlotWidth - this.margin.left - this.margin.right;
-        
-        // Add final state text
-        this.opinionPlotGroup.append('text')
-            .attr('class', 'final-state')
-            .attr('x', plotWidth / 2)
-            .attr('y', 20)
-            .attr('text-anchor', 'middle')
-            .attr('font-weight', 'bold')
-            .text(`Final State: Red ${Math.round(lastState.redProportion * 100)}%, Blue ${Math.round(lastState.blueProportion * 100)}%`);
     }
     
     /**
