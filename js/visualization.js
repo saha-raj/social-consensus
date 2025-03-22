@@ -35,8 +35,7 @@ class OpinionVisualizer {
         
         // Get dimensions
         this.agentPoolWidth = this.agentPoolContainer.node().clientWidth;
-        // Increase height to fill available space
-        this.agentPoolHeight = Math.max(this.agentPoolVisualization.node().clientHeight || 440, 600);
+        this.agentPoolHeight = this.agentPoolVisualization.node().clientHeight || 500;
         
         this.opinionPlotWidth = this.opinionPlotContainer.node().clientWidth;
         this.opinionPlotHeight = this.opinionPlotContainer.node().clientHeight || 500;
@@ -44,13 +43,9 @@ class OpinionVisualizer {
         this.margin = { top: 40, right: 40, bottom: 60, left: 60 };
         
         // Set up color scales for opinions
-        this.redColorScale = d3.scaleLinear()
-            .domain([-1, 0])
-            .range(['#e63946', '#f4a582']);
-            
-        this.blueColorScale = d3.scaleLinear()
-            .domain([0, 1])
-            .range(['#92c5de', '#1d3557']);
+        this.colorScale = d3.scaleLinear()
+            .domain([-1, 1])
+            .range(['#ef476f', '#00a6fb']);
         
         // Initialize the SVGs
         this.agentPoolSvg = this.agentPoolVisualization.append('svg')
@@ -70,7 +65,7 @@ class OpinionVisualizer {
             
         // Define the radius of the circular area - make it slightly smaller to ensure it fits
         this.areaRadius = Math.min(this.agentPoolWidth * 0.4, this.agentPoolHeight / 2) * 0.9;
-        
+            
         // Remove the boundary circle - no longer needed
         
         // Create a group for pairing lines (below agents)
@@ -121,8 +116,7 @@ class OpinionVisualizer {
     handleResize() {
         // Update dimensions
         this.agentPoolWidth = this.agentPoolContainer.node().clientWidth;
-        // Increase height to fill available space
-        this.agentPoolHeight = Math.max(this.agentPoolVisualization.node().clientHeight || 440, 600);
+        this.agentPoolHeight = this.agentPoolVisualization.node().clientHeight || 500;
         
         this.opinionPlotWidth = this.opinionPlotContainer.node().clientWidth;
         this.opinionPlotHeight = this.opinionPlotContainer.node().clientHeight || 500;
@@ -133,7 +127,6 @@ class OpinionVisualizer {
             .attr('height', this.agentPoolHeight);
             
         this.opinionPlotSvg
-            .attr('width', this.opinionPlotWidth)
             .attr('height', this.opinionPlotHeight);
             
         // Update group positions - CENTERED POSITIONING
@@ -187,10 +180,10 @@ class OpinionVisualizer {
                         // Calculate vector between agents
                         const dx = agent2.x - agent1.x;
                         const dy = agent2.y - agent1.y;
-                        
-                        // Skip if any values are NaN
-                        if (isNaN(dx) || isNaN(dy)) continue;
-                        
+                    
+                    // Skip if any values are NaN
+                    if (isNaN(dx) || isNaN(dy)) continue;
+                    
                         // Calculate distance
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         if (distance === 0) continue;
@@ -214,7 +207,7 @@ class OpinionVisualizer {
                             
                             if (distance < decayDistance) {
                                 force = maxRepulsion; // Full repulsion at close distances
-                            } else {
+            } else {
                                 // Decay repulsion with distance
                                 const decayFactor = decayDistance / distance;
                                 force = maxRepulsion * decayFactor;
@@ -257,9 +250,9 @@ class OpinionVisualizer {
                     if (!d.target || !d.target.y) return 0;
                     return d.target.y;
                 });
-                
-            // Update pairing lines
-            this.updatePairingLines();
+            
+        // Update pairing lines
+        this.updatePairingLines();
         });
     }
     
@@ -315,7 +308,7 @@ class OpinionVisualizer {
         // Reset all network edges to default appearance
         this.networkEdgesGroup.selectAll('.network-edge')
             .attr('stroke', '#ccc')
-            .attr('stroke-width', 1)
+                .attr('stroke-width', 1)
             .attr('stroke-opacity', 0.6);
         
         // Highlight edges along the path
@@ -395,13 +388,13 @@ class OpinionVisualizer {
         this.opinionPlotGroup.append('path')
             .attr('class', 'red-line')
             .attr('fill', 'none')
-            .attr('stroke', '#e63946')
+            .attr('stroke', '#ef476f')
             .attr('stroke-width', 2);
             
         this.opinionPlotGroup.append('path')
             .attr('class', 'blue-line')
-                .attr('fill', 'none')
-            .attr('stroke', '#1d3557')
+            .attr('fill', 'none')
+            .attr('stroke', '#00a6fb')
             .attr('stroke-width', 2);
             
         // Add legend
@@ -415,7 +408,7 @@ class OpinionVisualizer {
             .attr('y', 0)
             .attr('width', 15)
             .attr('height', 15)
-            .attr('fill', '#e63946');
+            .attr('fill', '#ef476f');
             
         legend.append('text')
             .attr('x', 20)
@@ -428,7 +421,7 @@ class OpinionVisualizer {
             .attr('y', 25)
             .attr('width', 15)
             .attr('height', 15)
-            .attr('fill', '#1d3557');
+            .attr('fill', '#00a6fb');
             
         legend.append('text')
             .attr('x', 20)

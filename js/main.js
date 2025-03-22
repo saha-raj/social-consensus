@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Opinion colors
     const opinionColors = {
-        'red': '#e63946',
-        'blue': '#1d3557'
+        'red': '#ef476f',
+        'blue': '#00a6fb'
     };
     
     // Current proportion value (0.5 = 50% red, 50% blue)
@@ -309,4 +309,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize homophily slider value
     document.querySelector('.param-group:nth-child(5) .slider-max').textContent = `${Math.round(homophilySlider.value * 100)}%`;
+
+    // Find the simulation container
+    const simulationContainer = document.querySelector('.simulation-container');
+    
+    if (simulationContainer) {
+        // Find the simulation grid
+        const simulationGrid = simulationContainer.querySelector('.simulation-grid');
+        
+        if (simulationGrid) {
+            // Create the inner container
+            const simulationInner = document.createElement('div');
+            simulationInner.className = 'simulation-inner';
+            
+            // Move the grid into the inner container
+            simulationContainer.removeChild(simulationGrid);
+            simulationInner.appendChild(simulationGrid);
+            simulationContainer.appendChild(simulationInner);
+            
+            console.log('Added simulation inner container');
+        }
+    }
 });

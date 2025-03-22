@@ -149,50 +149,79 @@ li {
   margin-bottom: 2rem;
 }
 
-/* Simulation section - replaces both simulation-block and sequence-block */
+/* Simulation section */
 .simulation-container {
-  background-color: var(--sim-bg);
-  padding: 20px 0;
-  margin: 2.5rem 0;
-  width: 100vw;
-  position: relative;
-  left: 50%;
-  transform: translateX(-50%);
-  /* border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color); */
+    background-color: var(--sim-bg);
+    margin: 2rem 0;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.simulation-container h2 {
-  font-family: var(--ui-font);
-  font-weight: 600;
-  font-size: 1.3rem;
-  margin-top: 0;
-  margin-bottom: 1.2rem;
-  display: flex;
-  align-items: center;
-  max-width: var(--simulation-max-width);
-  margin-left: auto;
-  margin-right: auto;
-  padding: 0 20px;
+/* Inner container to center the grid */
+.simulation-inner {
+    width: 90%;
+    max-width: 1600px;
+    min-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    padding: 10px;
 }
 
 /* Three column layout */
 .simulation-grid {
-  display: grid;
-  grid-template-columns: 1fr 2.2fr 1.4fr;
-  gap: 20px;
-  width: 100%;
-  max-width: var(--simulation-max-width);
-  margin-left: auto;
-  margin-right: auto;
-  padding: 0 30px;
+    display: grid;
+    grid-template-columns: minmax(auto, 300px) 600px 500px; /* Increased middle column width */
+    gap: 20px;
+    width: 100%;
+    align-items: center;
+    justify-content: center; /* Center the grid columns */
+}
+
+/* All columns */
+.controls-column, .agent-pool-column, .histogram-column {
 }
 
 /* Controls column */
 .controls-column {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-self: start;
+}
+
+/* Visualization columns */
+.agent-pool-column, .histogram-column {
+    height: 500px;
+    overflow: hidden;
+    align-self: center;
+}
+
+/* Agent pool column specific */
+.agent-pool-column {
+    width: 600px; /* Increased width */
+    height: 600px; /* Increased height */
+    position: relative; /* Make it a positioning context */
+}
+
+/* Histogram column specific */
+.histogram-column {
+    width: 500px; /* Keep original width */
+    height: 500px; /* Keep original height */
+}
+
+/* SVG containers */
+.agent-pool-visualization, 
+.agent-pool-visualization svg,
+.histogram-column svg {
+    width: 100%;
+    height: 100%;
 }
 
 /* Strategy selection */
@@ -487,83 +516,22 @@ select option::before {
   font-style: italic;
 }
 
-/* Visualization columns - remove borders */
-.agent-pool-column, .histogram-column {
-  height: 500px;
-  background-color: var(--card-bg);
-  border: none;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* For testing - give histogram a background color to match settings */
-.histogram-column {
-  background-color: var(--control-bg);
-  /* border: 2px solid #3a86ff; /* Add a visible blue border */ 
-  padding: 0; /* Remove specific padding to ensure consistency */
-}
-
-/* Strategy selection when placed above agent pool */
-.strategy-selection-container {
-  margin-bottom: 12px;
-  background-color: var(--control-bg);
-  border-radius: 4px;
-  padding: 12px 15px;
-  flex-shrink: 0;  /* Prevent container from shrinking */
-}
-
-.strategy-selection-header {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.strategy-selection-row {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  gap: 15px;
-}
-
-.strategy-selection-row .strategy-group {
-  flex: 1;
-  margin-bottom: 0;
-}
-
-.agent-pool-visualization {
-  flex: 1;
-  position: relative;
-  min-height: 400px; /* Ensure minimum height for visualization */
-  width: 100%;
-  background-color: var(--control-bg); /* For testing purposes */
-  overflow: visible; /* Allow content to overflow without being cut off */
-  height: 100%;
-  min-height: 600px;
-}
-
-/* Ensure the SVG can also overflow */
-#agent-pool-container svg {
-  overflow: visible;
-}
-
 /* Running indicator */
 #running-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #adb6c4; /* Updated color as requested */
+  color: #adb6c4;
   font-weight: bold;
   font-size: 13px;
   font-family: var(--ui-font);
-  position: absolute; /* Position absolutely within agent-pool-visualization */
-  bottom: 45px; /* Moved up from 15px to prevent being cut off */
-  right: 15px; /* Position at right */
-  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  background-color: rgba(255, 255, 255, 0.8);
   padding: 6px 12px;
   border-radius: 4px;
-  z-index: 100; /* Ensure it's above other elements */
+  z-index: 100;
 }
 
 #running-indicator.hidden {
@@ -573,8 +541,8 @@ select option::before {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(173, 182, 196, 0.3); /* Add faint circular track */
-  border-top-color: #adb6c4; /* Keep the animated part more visible */
+  border: 2px solid rgba(173, 182, 196, 0.3);
+  border-top-color: #adb6c4;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -808,448 +776,77 @@ select option::before {
   border-bottom-color: var(--footer-text);
 }
 
-/* Responsive adjustments */
+/* Media queries for responsive layout */
 @media (max-width: 1024px) {
-  .simulation-grid {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      "controls controls"
-      "agents histogram";
-  }
-  
-  .controls-column {
-    grid-area: controls;
-  }
-  
-  .agent-pool-column {
-    grid-area: agents;
-  }
-  
-  .histogram-column {
-    grid-area: histogram;
-  }
+    /* Tablet layout - stack in 2 rows */
+    .simulation-grid {
+        grid-template-columns: minmax(auto, 300px) 1fr;
+        grid-template-areas:
+            "controls simulation"
+            "histogram histogram";
+        gap: 20px;
+    }
+    
+    .controls-column {
+        grid-area: controls;
+    }
+    
+    .agent-pool-column {
+        grid-area: simulation;
+        width: 100%;
+        max-width: 600px;
+        height: 600px;
+    }
+    
+    .histogram-column {
+        grid-area: histogram;
+        width: 100%;
+        height: 400px;
+    }
 }
 
 @media (max-width: 768px) {
-  :root {
-    --base-font-size: 16px;
-    --h1-size: 1.8rem;
-    --h2-size: 1.4rem;
-    --simulation-width: 100%;
-  }
-  
-  .simulation-grid {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "controls"
-      "agents"
-      "histogram";
-  }
-  
-  .simulation-container {
-    width: 100%;
-    left: 0;
-    transform: none;
-    padding: 15px;
-  }
-  
-  .agent-pool-column, .histogram-column {
-    height: 400px;
-  }
-  
-  /* Make the strategy selection row stack for mobile */
-  .strategy-selection-row {
-    flex-direction: column;
-    gap: 10px;
-  }
+    /* Mobile layout - stack vertically */
+    .simulation-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "controls"
+            "simulation"
+            "histogram";
+    }
+    
+    .simulation-inner {
+        min-width: auto;
+        width: 95%;
+    }
+    
+    .agent-pool-column {
+        width: 100%;
+        height: 500px;
+    }
+    
+    .histogram-column {
+        width: 100%;
+        height: 400px;
+    }
 }
 
 @media (max-width: 480px) {
-  :root {
-    --content-padding: 1rem 0.5rem;
-  }
-  
-  h1 {
-    font-size: 1.7rem;
-  }
-  
-  h2 {
-    font-size: 1.3rem;
-  }
-  
-  .agent-pool-column, .histogram-column {
-    height: 350px;
-  }
+    /* Small mobile adjustments */
+    .simulation-container {
+        padding: 1rem;
+    }
+    
+    .simulation-inner {
+        padding: 5px;
+    }
+    
+    .simulation-grid {
+        gap: 15px;
+    }
 }
 
-/* Additional testing styles to visualize content */
-/* Agent pool column styling for testing */
+/* Position the running indicator inside the agent-pool-column */
 .agent-pool-column {
-  /* border: 2px solid #06d6a0; /* Add a visible green border */
-  height: 100%;
-}
-
-#agent-pool-container svg {
-  /* border: 2px dashed #9b5de5; /* Purple dashed border for the agent pool SVG */
-}
-
-/* Strategy selection when placed above agent pool */
-.strategy-selection-container {
-  margin-bottom: 12px;
-  background-color: var(--control-bg);
-  border-radius: 4px;
-  padding: 12px 15px;
-  flex-shrink: 0;  /* Prevent container from shrinking */
-}
-
-.strategy-selection-header {
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.strategy-selection-row {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  gap: 15px;
-}
-
-.strategy-selection-row .strategy-group {
-  flex: 1;
-  margin-bottom: 0;
-}
-
-.agent-pool-visualization {
-  flex: 1;
-  position: relative;
-  min-height: 400px; /* Ensure minimum height for visualization */
-  width: 100%;
-  background-color: var(--control-bg); /* For testing purposes */
-  overflow: visible; /* Allow content to overflow without being cut off */
-}
-
-/* Ensure the SVG can also overflow */
-#agent-pool-container svg {
-  overflow: visible;
-}
-
-/* Running indicator */
-#running-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #adb6c4; /* Updated color as requested */
-  font-weight: bold;
-  font-size: 13px;
-  font-family: var(--ui-font);
-  position: absolute; /* Position absolutely within agent-pool-visualization */
-  bottom: 45px; /* Moved up from 15px to prevent being cut off */
-  right: 15px; /* Position at right */
-  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
-  padding: 6px 12px;
-  border-radius: 4px;
-  z-index: 100; /* Ensure it's above other elements */
-}
-
-#running-indicator.hidden {
-  display: none;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(173, 182, 196, 0.3); /* Add faint circular track */
-  border-top-color: #adb6c4; /* Keep the animated part more visible */
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Strategy node styling */
-.strategy circle {
-  cursor: pointer;
-  transition: r 0.3s ease-out, stroke-width 0.3s ease-out;
-}
-
-.strategy circle:hover {
-  stroke-width: 3px;
-  stroke: #fff;
-}
-
-.strategy text {
-  pointer-events: none;
-  font-family: var(--ui-font);
-}
-
-.matchup-line {
-  pointer-events: none;
-}
-
-/* Agent pool styling */
-.agent {
-  transition: r 0.3s ease-out;
-  cursor: pointer;
-}
-
-.agent:hover {
-  opacity: 0.9;
-}
-
-/* Histogram styling */
-.histogram-area {
-  transition: d 0.3s ease-out;
-}
-
-.histogram-area:hover {
-  opacity: 0.8;
-}
-
-.histogram-line {
-  transition: d 0.3s ease-out;
-  pointer-events: none;
-}
-
-/* Axis styling */
-.x-axis path,
-.x-axis line,
-.y-axis path,
-.y-axis line {
-  stroke: #ccc;
-  stroke-width: 1px;
-}
-
-.x-axis text,
-.y-axis text {
-  font-size: 11px;
-  fill: #666;
-  font-family: var(--ui-font);
-}
-
-.x-axis-label,
-.y-axis-label {
-  font-size: 12px;
-  fill: #333;
-  font-family: var(--ui-font);
-}
-
-/* Legend styling */
-.legend-item text {
-  fill: #333;
-  font-family: var(--ui-font);
-  font-size: 12px;
-}
-
-/* Grid lines */
-.grid-line {
-  stroke: #eee;
-  stroke-width: 1;
-}
-
-/* Y-axis labels */
-.left-y-label, .right-y-label {
-  font-size: 10px;
-  fill: #777;
-  font-family: var(--ui-font);
-}
-
-/* Winner styles */
-.winner-label {
-  font-size: 13px;
-  text-align: center;
-  color: var(--primary-btn);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: var(--ui-font);
-  font-weight: bold;
-}
-
-/* Strategy name and total score text */
-.strategy-name-label, .strategy-label {
-  font-family: var(--ui-font);
-  font-size: 15px !important;
-}
-
-.total-score, .avg-score {
-  font-family: var(--ui-font);
-  font-size: 12px !important;
-}
-
-/* More Stories section */
-.more-stories {
-  background: var(--background-color);
-  padding: var(--section-spacing) 0;
-  margin-top: 3rem;
-  width: 100%;
-}
-
-.more-stories .content {
-  max-width: 100%;
-  padding: 0 2rem;
-  background-color: transparent;
-}
-
-.stories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-  align-items: start;
-}
-
-.story-card {
-  background: var(--card-bg);
-  overflow: hidden;
-  border: 1px solid #eaeaea;
-  display: flex;
-  flex-direction: column;
-  height: auto;
-}
-
-/* .story-card img {
-  width: 100%;
-  height: 180px;
-  display: block;
-  object-fit: cover;
-  background-color: #f5f5f5;
-} */
-
-.story-card-content {
-  padding: 1rem;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.story-card h4 {
-  font-size: var(--h4-size);
-  margin: 0 0 0.5rem 0;
-  font-weight: 600;
-}
-
-.story-card p {
-  margin: 0;
-  font-size: var(--small-text);
-  color: var(--footer-text);
-}
-
-/* Center the "More Stories" heading */
-.more-stories h3 {
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-/* Footer */
-.footer {
-  min-height: 20vh;
-  background-color: var(--footer-bg);
-  margin-top: 3rem;
-  padding: 2rem 0;
-}
-
-.footer .container {
-  max-width: var(--content-width);
-  margin: 0 auto;
-  padding: 0 1rem;
-  color: var(--footer-text);
-}
-
-.footer p {
-  margin-bottom: 1rem;
-  color: var(--footer-text);
-  font-family: var(--ui-font);
-  font-size: 0.9rem;
-}
-
-.footer a {
-  color: var(--footer-text);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-bottom-color 0.2s ease-in-out;
-}
-
-.footer a:hover {
-  border-bottom-color: var(--footer-text);
-}
-
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .simulation-grid {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      "controls controls"
-      "agents histogram";
-  }
-  
-  .controls-column {
-    grid-area: controls;
-  }
-  
-  .agent-pool-column {
-    grid-area: agents;
-  }
-  
-  .histogram-column {
-    grid-area: histogram;
-  }
-}
-
-@media (max-width: 768px) {
-  :root {
-    --base-font-size: 16px;
-    --h1-size: 1.8rem;
-    --h2-size: 1.4rem;
-    --simulation-width: 100%;
-  }
-  
-  .simulation-grid {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "controls"
-      "agents"
-      "histogram";
-  }
-  
-  .simulation-container {
-    width: 100%;
-    left: 0;
-    transform: none;
-    padding: 15px;
-  }
-  
-  .agent-pool-column, .histogram-column {
-    height: 400px;
-  }
-  
-  /* Make the strategy selection row stack for mobile */
-  .strategy-selection-row {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --content-padding: 1rem 0.5rem;
-  }
-  
-  h1 {
-    font-size: 1.7rem;
-  }
-  
-  h2 {
-    font-size: 1.3rem;
-  }
-  
-  .agent-pool-column, .histogram-column {
-    height: 350px;
-  }
+    position: relative; /* Make it a positioning context */
 } 
