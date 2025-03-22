@@ -539,6 +539,8 @@ select option::before {
   width: 100%;
   background-color: var(--control-bg); /* For testing purposes */
   overflow: visible; /* Allow content to overflow without being cut off */
+  height: 100%;
+  min-height: 600px;
 }
 
 /* Ensure the SVG can also overflow */
@@ -884,6 +886,7 @@ select option::before {
 /* Agent pool column styling for testing */
 .agent-pool-column {
   /* border: 2px solid #06d6a0; /* Add a visible green border */
+  height: 100%;
 }
 
 #agent-pool-container svg {

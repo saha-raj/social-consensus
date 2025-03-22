@@ -35,7 +35,8 @@ class OpinionVisualizer {
         
         // Get dimensions
         this.agentPoolWidth = this.agentPoolContainer.node().clientWidth;
-        this.agentPoolHeight = this.agentPoolVisualization.node().clientHeight || 440;
+        // Increase height to fill available space
+        this.agentPoolHeight = Math.max(this.agentPoolVisualization.node().clientHeight || 440, 600);
         
         this.opinionPlotWidth = this.opinionPlotContainer.node().clientWidth;
         this.opinionPlotHeight = this.opinionPlotContainer.node().clientHeight || 500;
@@ -62,25 +63,16 @@ class OpinionVisualizer {
             .attr('height', this.opinionPlotHeight)
             .style('background-color', '#fff');
             
-        // Create a group for the agent pool visualization - ADJUSTED POSITIONING WITH OFFSET
+        // Create a group for the agent pool visualization - CENTERED POSITIONING
         this.agentPoolGroup = this.agentPoolSvg.append('g')
             .attr('class', 'agent-pool')
-            .attr('transform', `translate(${this.agentPoolWidth / 2}, ${this.agentPoolHeight * 0.45})`);
+            .attr('transform', `translate(${this.agentPoolWidth / 2}, ${this.agentPoolHeight / 2})`);
             
         // Define the radius of the circular area - make it slightly smaller to ensure it fits
         this.areaRadius = Math.min(this.agentPoolWidth * 0.4, this.agentPoolHeight / 2) * 0.9;
-            
-        // Create a boundary circle
-        this.agentPoolGroup.append('circle')
-            .attr('class', 'boundary-circle')
-            .attr('cx', 0)
-            .attr('cy', 0)
-            .attr('r', this.areaRadius)
-            .attr('fill', 'none')
-            .attr('stroke', '#ddd')
-            .attr('stroke-width', 1)
-            .attr('stroke-dasharray', '3,3');
-            
+        
+        // Remove the boundary circle - no longer needed
+        
         // Create a group for pairing lines (below agents)
         this.pairingLinesGroup = this.agentPoolGroup.append('g')
             .attr('class', 'pairing-lines');
@@ -107,11 +99,20 @@ class OpinionVisualizer {
     /**
      * Get color for an agent based on opinion
      * @param {number} beliefValue - The agent's belief value (-1 to 1)
-     * @returns {string} Color in hex format
+     * @returns {Object} Color and opacity
      */
     getAgentColor(beliefValue) {
-        // Use fixed colors based on opinion (sign of belief value)
-        return beliefValue < 0 ? '#ef476f' : '#00a6fb';
+        // Base colors
+        const baseColor = beliefValue < 0 ? '#ef476f' : '#00a6fb';
+        
+        // Calculate opacity based on belief strength (absolute value)
+        // Floor of 0.1 to ensure agents are always at least slightly visible
+        const opacity = Math.max(0.1, Math.abs(beliefValue));
+        
+        return {
+            color: baseColor,
+            opacity: opacity
+        };
     }
     
     /**
@@ -120,7 +121,8 @@ class OpinionVisualizer {
     handleResize() {
         // Update dimensions
         this.agentPoolWidth = this.agentPoolContainer.node().clientWidth;
-        this.agentPoolHeight = this.agentPoolVisualization.node().clientHeight || 440;
+        // Increase height to fill available space
+        this.agentPoolHeight = Math.max(this.agentPoolVisualization.node().clientHeight || 440, 600);
         
         this.opinionPlotWidth = this.opinionPlotContainer.node().clientWidth;
         this.opinionPlotHeight = this.opinionPlotContainer.node().clientHeight || 500;
@@ -134,15 +136,13 @@ class OpinionVisualizer {
             .attr('width', this.opinionPlotWidth)
             .attr('height', this.opinionPlotHeight);
             
-        // Update group positions
+        // Update group positions - CENTERED POSITIONING
         this.agentPoolGroup
-            .attr('transform', `translate(${this.agentPoolWidth / 2}, ${this.agentPoolHeight * 0.45})`);
+            .attr('transform', `translate(${this.agentPoolWidth / 2}, ${this.agentPoolHeight / 2})`);
             
-        // Update the area radius and boundary circle
+        // Update the area radius
         this.areaRadius = Math.min(this.agentPoolWidth * 0.4, this.agentPoolHeight / 2) * 0.9;
-        this.agentPoolGroup.select('.boundary-circle')
-            .attr('r', this.areaRadius);
-            
+        
         // Update the opinion plot
         this.updateOpinionPlot();
         
@@ -159,135 +159,182 @@ class OpinionVisualizer {
     setupForceSimulation() {
         // Create a force simulation
         this.forceSimulation = d3.forceSimulation()
-            // Light repulsion to prevent perfect overlap
-            .force('charge', d3.forceManyBody().strength(-5).distanceMax(50))
-            // Collision detection to prevent overlap
-            .force('collision', d3.forceCollide().radius(d => d.radius * 1.1).strength(0.3))
-            // Add a gentle center-directed force
-            .force('center', d3.forceCenter(0, 0).strength(0.01))
-            // Custom force for pairing
-            .force('pairing', alpha => {
+            // Moderate repulsion to prevent tight clustering
+            .force('charge', d3.forceManyBody().strength(-15).distanceMax(150))
+            // Increase collision strength to prevent overlap
+            .force('collision', d3.forceCollide().radius(d => d.radius * 1.5).strength(0.8))
+            // Stronger center force to keep agents in bounds naturally
+            .force('center', d3.forceCenter(0, 0).strength(0.3))
+            // Make network links weak but meaningful
+            .force('link', d3.forceLink().id(d => d.id).strength(d => 0.05))
+            // Similarity-based attraction/repulsion with belief-dependent strength
+            .force('similarity', alpha => {
                 if (!this.agentData) return;
                 
-                // Apply attraction force between paired agents
+                // Apply attraction/repulsion between agents based on opinion
                 for (let i = 0; i < this.agentData.length; i++) {
-                    const agent = this.agentData[i];
-                    if (!agent || !agent.isInPairing || agent.currentPairingId === null) continue;
+                    const agent1 = this.agentData[i];
+                    if (!agent1) continue;
                     
-                    // Find the paired agent
-                    const pairedAgent = this.agentData.find(a => a && a.id === agent.currentPairingId);
-                    if (!pairedAgent) continue;
-                    
-                    // Calculate vector between agents
-                    const dx = pairedAgent.x - agent.x;
-                    const dy = pairedAgent.y - agent.y;
-                    
-                    // Skip if any values are NaN
-                    if (isNaN(dx) || isNaN(dy)) continue;
-                    
-                    // Apply attraction force
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const targetDistance = 20; // Target distance between paired agents
-                    
-                    if (distance > targetDistance) {
-                        const strength = 0.1 * alpha; // Adjust strength as needed
-                        agent.x += dx * strength;
-                        agent.y += dy * strength;
-                    }
-                }
-            })
-            // Boundary force to keep agents within the circle
-            .force('boundary', alpha => {
-                if (!this.agentData) return;
-                
-                const radius = this.areaRadius;
-                const center = { x: 0, y: 0 };
-                const strength = 0.1 * alpha;
-                
-                for (let i = 0; i < this.agentData.length; i++) {
-                    const agent = this.agentData[i];
-                    if (!agent) continue;
-                    
-                    // Calculate distance from center
-                    const dx = agent.x - center.x;
-                    const dy = agent.y - center.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    // If agent is outside the boundary, push it back
-                    if (distance > radius - agent.radius) {
-                        const angle = Math.atan2(dy, dx);
-                        const targetX = center.x + (radius - agent.radius) * Math.cos(angle);
-                        const targetY = center.y + (radius - agent.radius) * Math.sin(angle);
+                    for (let j = i + 1; j < this.agentData.length; j++) {
+                        const agent2 = this.agentData[j];
+                        if (!agent2) continue;
                         
-                        agent.x = agent.x + (targetX - agent.x) * strength * 2;
-                        agent.y = agent.y + (targetY - agent.y) * strength * 2;
+                        // Calculate similarity (same opinion = similar)
+                        const sameSide = (agent1.beliefValue < 0 && agent2.beliefValue < 0) || 
+                                        (agent1.beliefValue >= 0 && agent2.beliefValue >= 0);
+                        
+                        // Calculate vector between agents
+                        const dx = agent2.x - agent1.x;
+                        const dy = agent2.y - agent1.y;
+                        
+                        // Skip if any values are NaN
+                        if (isNaN(dx) || isNaN(dy)) continue;
+                        
+                        // Calculate distance
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance === 0) continue;
+                        
+                        // Calculate belief strength factor (sum of absolute belief values)
+                        // This makes agents with stronger beliefs attract/repel more strongly
+                        const beliefStrengthFactor = Math.abs(agent1.beliefValue) + Math.abs(agent2.beliefValue);
+                        // Scale to a reasonable range (0.5 to 2.0)
+                        const scaledStrengthFactor = 0.5 + (beliefStrengthFactor / 2);
+                        
+                        // Apply balanced forces with distance decay and belief strength
+                        let force;
+                        if (sameSide) {
+                            // Attractive force for same opinion, scaled by belief strength
+                            // Increased from 0.02 to 0.035 for stronger attraction
+                            force = 0.035 * scaledStrengthFactor;
+                        } else {
+                            // Repulsive force for different opinion, scaled by belief strength
+                            const maxRepulsion = -0.05 * scaledStrengthFactor;
+                            const decayDistance = 100; // Distance at which repulsion starts to decay
+                            
+                            if (distance < decayDistance) {
+                                force = maxRepulsion; // Full repulsion at close distances
+                            } else {
+                                // Decay repulsion with distance
+                                const decayFactor = decayDistance / distance;
+                                force = maxRepulsion * decayFactor;
+                            }
+                        }
+                        
+                        const fx = dx / distance * force * alpha;
+                        const fy = dy / distance * force * alpha;
+                        
+                        agent1.vx += fx;
+                        agent1.vy += fy;
+                        agent2.vx -= fx;
+                        agent2.vy -= fy;
                     }
                 }
-            })
-            .on('tick', () => this.tickFunction());
-    }
-    
-    /**
-     * Force simulation tick function
-     */
-    tickFunction() {
-        if (!this.agentData) return;
+            });
         
-        // Update agent positions
-        this.agentPoolGroup.selectAll('.agent')
-            .attr('cx', d => d.x)
-            .attr('cy', d => d.y);
-            
-        // Update pairing lines
-        this.updatePairingLines();
+        // Set up tick function
+        this.forceSimulation.on('tick', () => {
+            // Update agent positions
+            this.agentPoolGroup.selectAll('.agent')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+                
+            // Update network edges
+            this.agentPoolGroup.selectAll('.network-edge')
+                .attr('x1', d => {
+                    if (!d.source || !d.source.x) return 0;
+                    return d.source.x;
+                })
+                .attr('y1', d => {
+                    if (!d.source || !d.source.y) return 0;
+                    return d.source.y;
+                })
+                .attr('x2', d => {
+                    if (!d.target || !d.target.x) return 0;
+                    return d.target.x;
+                })
+                .attr('y2', d => {
+                    if (!d.target || !d.target.y) return 0;
+                    return d.target.y;
+                });
+                
+            // Update pairing lines
+            this.updatePairingLines();
+        });
     }
     
     /**
-     * Update the pairing lines between agents
+     * Update the pairing lines between interacting agents
      */
     updatePairingLines() {
-        if (!this.agentData) return;
+        // Clear previous pairing lines
+        this.pairingLinesGroup.selectAll('.pairing-line').remove();
         
-        // Create data for pairing lines
-        const pairingData = [];
+        if (!this.simulation || !this.simulation.currentPairing) return;
         
-        for (let i = 0; i < this.agentData.length; i++) {
-            const agent = this.agentData[i];
-            if (!agent || !agent.isInPairing || agent.currentPairingId === null) continue;
+        const { agent1Index, agent2Index, path } = this.simulation.currentPairing;
+        
+        if (!path || path.length < 2) return;
+        
+        // Create a map of agent IDs to their data
+        const agentDataMap = new Map();
+        this.agentData.forEach(agent => {
+            agentDataMap.set(agent.id, agent);
+        });
+        
+        // Create lines for each segment of the path
+        for (let i = 0; i < path.length - 1; i++) {
+            const sourceId = path[i];
+            const targetId = path[i + 1];
             
-            // Find the paired agent
-            const pairedAgent = this.agentData.find(a => a && a.id === agent.currentPairingId);
-            if (!pairedAgent) continue;
+            const sourceData = agentDataMap.get(sourceId);
+            const targetData = agentDataMap.get(targetId);
             
-            // Only add each pairing once (when agent.id < pairedAgent.id)
-            if (agent.id < pairedAgent.id) {
-                pairingData.push({
-                    id: `${agent.id}-${pairedAgent.id}`,
-                    source: agent,
-                    target: pairedAgent
-                });
+            if (sourceData && targetData) {
+                this.pairingLinesGroup.append('line')
+                    .attr('class', 'pairing-line')
+                    .attr('x1', sourceData.x)
+                    .attr('y1', sourceData.y)
+                    .attr('x2', targetData.x)
+                    .attr('y2', targetData.y)
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 2)
+                    .attr('stroke-opacity', 0.8);
             }
         }
         
-        // Update pairing lines
-        const pairingLines = this.pairingLinesGroup.selectAll('.pairing-line')
-            .data(pairingData, d => d.id);
-            
-        // Remove old lines
-        pairingLines.exit().remove();
-        
-        // Add new lines
-        pairingLines.enter()
-            .append('line')
-            .attr('class', 'pairing-line')
-            .attr('stroke', '#999')
+        // Also highlight the network edges along the path
+        this.highlightNetworkPath(path);
+    }
+    
+    /**
+     * Highlight network edges along a path
+     * @param {Array} path - Array of agent IDs forming the path
+     */
+    highlightNetworkPath(path) {
+        // Reset all network edges to default appearance
+        this.networkEdgesGroup.selectAll('.network-edge')
+            .attr('stroke', '#ccc')
             .attr('stroke-width', 1)
-            .attr('stroke-dasharray', '3,3')
-            .merge(pairingLines)
-            .attr('x1', d => d.source.x)
-            .attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x)
-            .attr('y2', d => d.target.y);
+            .attr('stroke-opacity', 0.6);
+        
+        // Highlight edges along the path
+        if (path && path.length >= 2) {
+            for (let i = 0; i < path.length - 1; i++) {
+                const sourceId = path[i];
+                const targetId = path[i + 1];
+                
+                // Find and highlight this edge
+                this.networkEdgesGroup.selectAll('.network-edge')
+                    .filter(d => 
+                        (d.source.id === sourceId && d.target.id === targetId) || 
+                        (d.source.id === targetId && d.target.id === sourceId)
+                    )
+                    .attr('stroke', '#333')
+                    .attr('stroke-width', 2.5)
+                    .attr('stroke-opacity', 0.9);
+            }
+        }
     }
     
     /**
@@ -444,6 +491,7 @@ class OpinionVisualizer {
                 beliefValue: agent.beliefValue,
                 opinion: agent.opinion,
                 isZealot: agent.isZealot,
+                neighbors: agent.neighbors,
                 x: radius * Math.cos(angle),
                 y: radius * Math.sin(angle),
                 radius: 5, // Base radius
@@ -452,25 +500,63 @@ class OpinionVisualizer {
             };
         });
         
-        // Update the force simulation with new data
-        this.forceSimulation
-            .nodes(this.agentData)
-            .alpha(1)
-            .restart();
-            
-        // Create agent circles
+        // Create network edge data
+        this.edgeData = [];
+        this.agentData.forEach(agent => {
+            agent.neighbors.forEach(neighborId => {
+                this.edgeData.push({
+                    source: agent.id,
+                    target: neighborId
+                });
+            });
+        });
+        
+        // Clear any existing elements to ensure proper layering
+        this.networkEdgesGroup = this.agentPoolGroup.select('.network-edges');
+        if (this.networkEdgesGroup.empty()) {
+            // Create a group for network edges FIRST (so they appear behind agents)
+            this.networkEdgesGroup = this.agentPoolGroup.append('g')
+                .attr('class', 'network-edges');
+        } else {
+            this.networkEdgesGroup.selectAll('*').remove();
+        }
+        
+        // Create network edges with lighter appearance
+        this.networkEdgesGroup.selectAll('.network-edge')
+            .data(this.edgeData)
+            .enter()
+            .append('line')
+            .attr('class', 'network-edge')
+            .attr('stroke', '#ccc')  // Much lighter color
+            .attr('stroke-width', 1)  // Thinner
+            .attr('stroke-opacity', 0.6);  // More transparent
+        
+        // Remove any existing agent circles
+        this.agentPoolGroup.selectAll('.agent').remove();
+        
+        // Create agent circles AFTER edges so they appear on top
         this.agentPoolGroup.selectAll('.agent')
             .data(this.agentData, d => d.id)
             .enter()
             .append('circle')
             .attr('class', 'agent')
             .attr('r', d => d.radius)
-            .attr('fill', d => this.getAgentColor(d.beliefValue))
+            .attr('fill', d => this.getAgentColor(d.beliefValue).color)
+            .attr('fill-opacity', d => this.getAgentColor(d.beliefValue).opacity)
             .attr('stroke', d => d.isZealot ? '#000' : 'none')
             .attr('stroke-width', d => d.isZealot ? 2 : 0)
             .attr('cx', d => d.x)
             .attr('cy', d => d.y);
+        
+        // Update the force simulation with new data
+        this.forceSimulation
+            .nodes(this.agentData)
+            .force('link').links(this.edgeData);
             
+        this.forceSimulation
+            .alpha(1)
+            .restart();
+        
         // Initialize the opinion plot
         this.updateOpinionPlot();
     }
@@ -497,7 +583,8 @@ class OpinionVisualizer {
         // Update agent circles
         this.agentPoolGroup.selectAll('.agent')
             .data(this.agentData, d => d.id)
-            .attr('fill', d => this.getAgentColor(d.beliefValue))
+            .attr('fill', d => this.getAgentColor(d.beliefValue).color)
+            .attr('fill-opacity', d => this.getAgentColor(d.beliefValue).opacity)
             .attr('stroke', d => d.isZealot ? '#000' : 'none')
             .attr('stroke-width', d => d.isZealot ? 2 : 0);
             

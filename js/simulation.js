@@ -51,30 +51,192 @@ class OpinionDynamicsSimulation {
         const redAgents = Math.round(totalAgents * this.config.redProportion);
         const blueAgents = totalAgents - redAgents;
         
-        // Calculate zealot count (only red agents can be zealots)
-        const zealotCount = Math.round(redAgents * this.config.zealotFraction);
+        // Calculate zealot counts for both red and blue
+        const redZealotCount = Math.round(redAgents * this.config.redZealotFraction);
+        const blueZealotCount = Math.round(blueAgents * this.config.blueZealotFraction);
         
         // Create red agents (some zealots, some regular)
         for (let i = 0; i < redAgents; i++) {
-            const isZealot = i < zealotCount;
+            const isZealot = i < redZealotCount;
             // Random belief value between -1 and 0 for red agents
             // Zealots are always at -1 (extreme belief)
             const beliefValue = isZealot ? -1 : -Math.random();
             this.agents.push(new agentModule.Agent(beliefValue, isZealot, i));
         }
         
-        // Create blue agents (all regular, no zealots)
+        // Create blue agents (some zealots, some regular)
         for (let i = 0; i < blueAgents; i++) {
+            const isZealot = i < blueZealotCount;
             // Random belief value between 0 and 1 for blue agents
-            const beliefValue = Math.random();
-            this.agents.push(new agentModule.Agent(beliefValue, false, redAgents + i));
+            // Zealots are always at 1 (extreme belief)
+            const beliefValue = isZealot ? 1 : Math.random();
+            this.agents.push(new agentModule.Agent(beliefValue, isZealot, redAgents + i));
         }
+        
+        // Set up network connections with homophily
+        this.setupNetworkWithHomophily();
         
         // Update initial opinion counts
         this.updateOpinionCounts();
         
         // Record initial state
         this.recordOpinionState();
+    }
+    
+    /**
+     * Set up network connections with homophily preferences
+     */
+    setupNetworkWithHomophily() {
+        const totalAgents = this.agents.length;
+        const homophily = this.config.homophily || 0.5;
+        
+        // Create arrays of red and blue agent IDs for easier selection
+        const redAgentIds = this.agents
+            .filter(agent => agent.opinion === agentModule.RED)
+            .map(agent => agent.id);
+        
+        const blueAgentIds = this.agents
+            .filter(agent => agent.opinion === agentModule.BLUE)
+            .map(agent => agent.id);
+        
+        // Set up connections for each agent
+        this.agents.forEach(agent => {
+            const neighbors = [];
+            
+            // Determine number of connections for this agent (between 1-3)
+            let connectionCount = Math.floor(Math.random() * 3) + 1;
+            
+            // Try to add the desired number of connections
+            let attempts = 0;
+            const maxAttempts = 50; // Increase max attempts to find suitable neighbors
+            
+            while (neighbors.length < connectionCount && attempts < maxAttempts) {
+                attempts++;
+                
+                // Determine if this connection should be homophilic (same opinion)
+                let targetSameOpinion = Math.random() < homophily;
+                
+                // Select a neighbor based on homophily preference
+                let neighborId;
+                
+                if (targetSameOpinion) {
+                    // Try to connect to same opinion
+                    const potentialNeighbors = agent.opinion === agentModule.RED ? redAgentIds : blueAgentIds;
+                    
+                    if (potentialNeighbors.length > 1) { // Ensure there are other agents with same opinion
+                        // Select random agent with same opinion (excluding self)
+                        let index;
+                        do {
+                            index = Math.floor(Math.random() * potentialNeighbors.length);
+                            neighborId = potentialNeighbors[index];
+                        } while (neighborId === agent.id || neighbors.includes(neighborId));
+                    } else {
+                        // If we can't find same-opinion neighbors, we'll still respect homophily
+                        // by potentially reducing the number of connections rather than connecting randomly
+                        continue;
+                    }
+                } else {
+                    // Try to connect to opposite opinion
+                    const potentialNeighbors = agent.opinion === agentModule.RED ? blueAgentIds : redAgentIds;
+                    
+                    if (potentialNeighbors.length > 0) { // Ensure there are agents with opposite opinion
+                        // Select random agent with opposite opinion
+                        const index = Math.floor(Math.random() * potentialNeighbors.length);
+                        neighborId = potentialNeighbors[index];
+                        if (neighbors.includes(neighborId)) {
+                            continue;
+                        }
+                    } else {
+                        // If we can't find opposite-opinion neighbors, we'll still respect homophily
+                        // by potentially reducing the number of connections rather than connecting randomly
+                        continue;
+                    }
+                }
+                
+                // Add the neighbor
+                if (neighborId !== undefined && neighborId !== agent.id && !neighbors.includes(neighborId)) {
+                    neighbors.push(neighborId);
+                }
+            }
+            
+            // If we couldn't make any connections despite many attempts, ensure at least one connection
+            // but still try to respect homophily as much as possible
+            if (neighbors.length === 0) {
+                // Determine if we should prioritize same-opinion connection based on homophily
+                let preferSameOpinion = homophily >= 0.5;
+                
+                // Try to find at least one neighbor
+                if (preferSameOpinion) {
+                    // First try same opinion
+                    const sameOpinionNeighbors = agent.opinion === agentModule.RED ? redAgentIds : blueAgentIds;
+                    for (const potentialId of sameOpinionNeighbors) {
+                        if (potentialId !== agent.id) {
+                            neighbors.push(potentialId);
+                            break;
+                        }
+                    }
+                    
+                    // If still no neighbors, try opposite opinion
+                    if (neighbors.length === 0) {
+                        const oppositeOpinionNeighbors = agent.opinion === agentModule.RED ? blueAgentIds : redAgentIds;
+                        if (oppositeOpinionNeighbors.length > 0) {
+                            neighbors.push(oppositeOpinionNeighbors[0]);
+                        }
+                    }
+                } else {
+                    // First try opposite opinion
+                    const oppositeOpinionNeighbors = agent.opinion === agentModule.RED ? blueAgentIds : redAgentIds;
+                    if (oppositeOpinionNeighbors.length > 0) {
+                        neighbors.push(oppositeOpinionNeighbors[0]);
+                    } else {
+                        // If still no neighbors, try same opinion
+                        const sameOpinionNeighbors = agent.opinion === agentModule.RED ? redAgentIds : blueAgentIds;
+                        for (const potentialId of sameOpinionNeighbors) {
+                            if (potentialId !== agent.id) {
+                                neighbors.push(potentialId);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            agent.neighbors = neighbors;
+        });
+        
+        // Log network statistics for debugging
+        this.logNetworkStatistics();
+    }
+    
+    /**
+     * Log statistics about the network connections
+     */
+    logNetworkStatistics() {
+        let sameOpinionConnections = 0;
+        let differentOpinionConnections = 0;
+        let totalConnections = 0;
+        
+        this.agents.forEach(agent => {
+            agent.neighbors.forEach(neighborId => {
+                const neighbor = this.agents.find(a => a.id === neighborId);
+                if (neighbor) {
+                    totalConnections++;
+                    if (agent.opinion === neighbor.opinion) {
+                        sameOpinionConnections++;
+                    } else {
+                        differentOpinionConnections++;
+                    }
+                }
+            });
+        });
+        
+        console.log("Network Statistics:");
+        console.log(`Total connections: ${totalConnections}`);
+        console.log(`Same opinion connections: ${sameOpinionConnections} (${(sameOpinionConnections / totalConnections * 100).toFixed(2)}%)`);
+        console.log(`Different opinion connections: ${differentOpinionConnections} (${(differentOpinionConnections / totalConnections * 100).toFixed(2)}%)`);
+        
+        // Log homophily settings
+        console.log(`Homophily setting: ${this.config.homophily}`);
     }
     
     /**
@@ -115,7 +277,7 @@ class OpinionDynamicsSimulation {
     }
     
     /**
-     * Run a single interaction between two randomly selected agents
+     * Run a single interaction between two connected agents
      * @returns {Object} Interaction results
      */
     runInteraction() {
@@ -139,14 +301,21 @@ class OpinionDynamicsSimulation {
                 agent2.isInPairing = false;
                 agent2.currentPairingId = null;
             }
+            
+            // Clear path information
+            this.currentPairing.path = null;
         }
         
-        // Select two different random agents
-        const agent1Index = Math.floor(Math.random() * this.agents.length);
-        let agent2Index;
-        do {
-            agent2Index = Math.floor(Math.random() * this.agents.length);
-        } while (agent2Index === agent1Index);
+        // Find a pair of connected agents
+        const { agent1Index, agent2Index, path } = this.findConnectedAgentPair();
+        
+        // If no connected pair could be found, try again or end simulation
+        if (agent1Index === -1 || agent2Index === -1) {
+            console.log("Could not find connected agent pair. Network may be disconnected.");
+            this.isComplete = true;
+            this.isRunning = false;
+            return null;
+        }
         
         const agent1 = this.agents[agent1Index];
         const agent2 = this.agents[agent2Index];
@@ -159,7 +328,8 @@ class OpinionDynamicsSimulation {
         
         this.currentPairing = {
             agent1Index,
-            agent2Index
+            agent2Index,
+            path // Store the path between agents for visualization
         };
         
         // Record opinions before interaction
@@ -168,9 +338,15 @@ class OpinionDynamicsSimulation {
         const agent1BeliefBefore = agent1.beliefValue;
         const agent2BeliefBefore = agent2.beliefValue;
         
+        // Create agent map for neighbor lookups
+        const agentMap = new Map();
+        this.agents.forEach(agent => {
+            agentMap.set(agent.id, agent);
+        });
+        
         // Agents interact and potentially update beliefs
-        const agent1Changed = agent1.updateBelief(agent2);
-        const agent2Changed = agent2.updateBelief(agent1);
+        const agent1Changed = agent1.updateBelief(agent2, agentMap);
+        const agent2Changed = agent2.updateBelief(agent1, agentMap);
         
         // Increment interaction count
         this.interactionCount++;
@@ -244,6 +420,147 @@ class OpinionDynamicsSimulation {
         this.isRunning = false;
         
         return interactionResult;
+    }
+    
+    /**
+     * Find a pair of agents that are connected directly or indirectly
+     * @returns {Object} Object containing agent indices and the path between them
+     */
+    findConnectedAgentPair() {
+        // Randomly decide whether to look for direct or indirect connections
+        const preferIndirect = Math.random() < 0.3; // 30% chance to prefer indirect connections
+        
+        if (!preferIndirect) {
+            // Try to find a directly connected pair first (more efficient)
+            for (let attempts = 0; attempts < 5; attempts++) {
+                const agent1Index = Math.floor(Math.random() * this.agents.length);
+                const agent1 = this.agents[agent1Index];
+                
+                if (agent1.neighbors.length > 0) {
+                    // Randomly select one of agent1's neighbors
+                    const neighborIndex = Math.floor(Math.random() * agent1.neighbors.length);
+                    const agent2Id = agent1.neighbors[neighborIndex];
+                    const agent2Index = this.agents.findIndex(a => a.id === agent2Id);
+                    
+                    if (agent2Index !== -1) {
+                        // Direct connection - path is just the two agents
+                        return { 
+                            agent1Index, 
+                            agent2Index, 
+                            path: [agent1.id, agent2Id] 
+                        };
+                    }
+                }
+            }
+        }
+        
+        // Look for an indirectly connected pair using breadth-first search
+        // Try multiple starting points to increase variety
+        for (let attempts = 0; attempts < 3; attempts++) {
+            const agent1Index = Math.floor(Math.random() * this.agents.length);
+            const agent1 = this.agents[agent1Index];
+            
+            // Find all agents reachable from agent1 using BFS
+            const { reachableAgents, paths } = this.findReachableAgents(agent1.id);
+            
+            if (reachableAgents.length > 1) { // At least one other agent is reachable
+                // Filter paths to find those with length > 2 (indirect connections)
+                const indirectPaths = [];
+                for (const agentId in paths) {
+                    if (paths[agentId].length > 2 && agentId !== agent1.id.toString()) {
+                        indirectPaths.push({
+                            agentId: parseInt(agentId),
+                            path: paths[agentId]
+                        });
+                    }
+                }
+                
+                // If we found indirect paths, randomly select one
+                if (indirectPaths.length > 0) {
+                    const selectedPath = indirectPaths[Math.floor(Math.random() * indirectPaths.length)];
+                    const agent2Index = this.agents.findIndex(a => a.id === selectedPath.agentId);
+                    
+                    if (agent2Index !== -1) {
+                        return { 
+                            agent1Index, 
+                            agent2Index, 
+                            path: selectedPath.path 
+                        };
+                    }
+                }
+                
+                // If no indirect paths or we couldn't find the agent, fall back to any reachable agent
+                const reachableIndex = Math.floor(Math.random() * (reachableAgents.length - 1)) + 1;
+                const agent2Id = reachableAgents[reachableIndex];
+                const agent2Index = this.agents.findIndex(a => a.id === agent2Id);
+                
+                if (agent2Index !== -1) {
+                    return { 
+                        agent1Index, 
+                        agent2Index, 
+                        path: paths[agent2Id] 
+                    };
+                }
+            }
+        }
+        
+        // If we still couldn't find a connected pair, try direct connections again
+        const agent1Index = Math.floor(Math.random() * this.agents.length);
+        const agent1 = this.agents[agent1Index];
+        
+        if (agent1.neighbors.length > 0) {
+            const neighborIndex = Math.floor(Math.random() * agent1.neighbors.length);
+            const agent2Id = agent1.neighbors[neighborIndex];
+            const agent2Index = this.agents.findIndex(a => a.id === agent2Id);
+            
+            if (agent2Index !== -1) {
+                return { 
+                    agent1Index, 
+                    agent2Index, 
+                    path: [agent1.id, agent2Id] 
+                };
+            }
+        }
+        
+        // If we still couldn't find a connected pair, return invalid indices
+        return { agent1Index: -1, agent2Index: -1, path: null };
+    }
+    
+    /**
+     * Find all agents reachable from a starting agent using BFS
+     * @param {number} startAgentId - ID of the starting agent
+     * @returns {Object} Object containing reachable agents and paths to them
+     */
+    findReachableAgents(startAgentId) {
+        const visited = new Set();
+        const queue = [startAgentId];
+        visited.add(startAgentId);
+        
+        // Track paths to each reachable agent
+        const paths = {};
+        paths[startAgentId] = [startAgentId];
+        
+        while (queue.length > 0) {
+            const currentId = queue.shift();
+            const currentAgent = this.agents.find(a => a.id === currentId);
+            
+            if (!currentAgent) continue;
+            
+            for (const neighborId of currentAgent.neighbors) {
+                if (!visited.has(neighborId)) {
+                    visited.add(neighborId);
+                    queue.push(neighborId);
+                    
+                    // Record the path to this neighbor
+                    paths[neighborId] = [...paths[currentId], neighborId];
+                }
+            }
+        }
+        
+        return { 
+            reachableAgents: Array.from(visited), 
+            paths 
+        };
     }
     
     /**

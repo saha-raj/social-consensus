@@ -12,14 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const proportionSlider = document.getElementById('proportion-slider');
     const proportionLabelLeft = document.getElementById('proportion-label-left');
     const proportionLabelRight = document.getElementById('proportion-label-right');
-    const zealotFractionSlider = document.getElementById('zealot-fraction');
+    const redZealotFractionSlider = document.getElementById('red-zealot-fraction');
+    const blueZealotFractionSlider = document.getElementById('blue-zealot-fraction');
     const populationSizeSlider = document.getElementById('population-size');
-    const simulationSpeedSlider = document.getElementById('simulation-speed');
     const startButton = document.getElementById('start-simulation');
     const stopButton = document.getElementById('stop-simulation');
     const resetButton = document.getElementById('reset-simulation');
     const runningIndicator = document.getElementById('running-indicator');
-    const maxInteractionsSlider = document.getElementById('max-interactions');
+    const homophilySlider = document.getElementById('homophily');
     
     // Opinion colors
     const opinionColors = {
@@ -62,9 +62,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Update slider values as they change
-    zealotFractionSlider.addEventListener('input', function() {
-        const zealotFractionValue = document.querySelector('.param-group:nth-child(2) .slider-max');
-        zealotFractionValue.textContent = `${this.value}%`;
+    redZealotFractionSlider.addEventListener('input', function() {
+        const redZealotFractionValue = document.querySelector('.param-group:nth-child(2) .slider-max');
+        redZealotFractionValue.textContent = `${this.value}%`;
+        
+        // Reset visualization if simulation exists and is complete
+        if (simulation && simulation.isComplete) {
+            visualizer.reset();
+            simulation = null;
+        }
+    });
+    
+    blueZealotFractionSlider.addEventListener('input', function() {
+        const blueZealotFractionValue = document.querySelector('.param-group:nth-child(3) .slider-max');
+        blueZealotFractionValue.textContent = `${this.value}%`;
         
         // Reset visualization if simulation exists and is complete
         if (simulation && simulation.isComplete) {
@@ -74,23 +85,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     populationSizeSlider.addEventListener('input', function() {
-        const populationSizeValue = document.querySelector('.param-group:nth-child(3) .slider-max');
+        const populationSizeValue = document.querySelector('.param-group:nth-child(4) .slider-max');
         populationSizeValue.textContent = this.value;
         
         // Reset visualization if simulation exists and is complete
         if (simulation && simulation.isComplete) {
             visualizer.reset();
             simulation = null;
-        }
-    });
-    
-    simulationSpeedSlider.addEventListener('input', function() {
-        const simulationSpeedValue = document.querySelector('.param-group:nth-child(4) .slider-max');
-        simulationSpeedValue.textContent = this.value === '10' ? 'Fast' : 'Fast';
-        
-        // Update simulation speed if running
-        if (simulation && isRunning) {
-            updateSimulationSpeed();
         }
     });
     
@@ -118,25 +119,26 @@ document.addEventListener('DOMContentLoaded', function() {
         startButton.disabled = true;
         stopButton.disabled = false;
         proportionSlider.disabled = true;
-        zealotFractionSlider.disabled = true;
+        redZealotFractionSlider.disabled = true;
+        blueZealotFractionSlider.disabled = true;
         populationSizeSlider.disabled = true;
+        homophilySlider.disabled = true;
         
         // Show running indicator
         runningIndicator.classList.remove('hidden');
         
         // Get parameters
         const redProportion = currentProportion;
-        const zealotFraction = parseInt(zealotFractionSlider.value) / 100;
-        const populationSize = parseInt(populationSizeSlider.value);
-        const simulationSpeed = parseInt(simulationSpeedSlider.value);
         
         // Create simulation configuration
         const config = {
-            populationSize: populationSize,
+            populationSize: parseInt(populationSizeSlider.value),
             redProportion: redProportion,
-            zealotFraction: zealotFraction,
-            simulationSpeed: simulationSpeed,
-            maxInteractions: parseInt(maxInteractionsSlider.value) * 1000 // Convert to thousands
+            redZealotFraction: parseInt(redZealotFractionSlider.value) / 100,
+            blueZealotFraction: parseInt(blueZealotFractionSlider.value) / 100,
+            homophily: parseFloat(homophilySlider.value),
+            maxInteractions: 10000, // Set a fixed value instead of using a slider
+            simulationSpeed: 10 // Set to maximum speed by default
         };
         
         // Initialize simulation
@@ -149,7 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // If simulation is not complete and not stopped, run next interaction after a delay
             if (!simulation.isComplete && !stopRequested) {
-                const delay = calculateInteractionDelay(config.simulationSpeed);
+                // Use a fixed small delay for maximum speed
+                const delay = 10;
                 nextInteractionTimeout = setTimeout(() => {
                     simulation.runInteraction();
                 }, delay);
@@ -179,8 +182,10 @@ document.addEventListener('DOMContentLoaded', function() {
             startButton.disabled = false;
             stopButton.disabled = true;
             proportionSlider.disabled = false;
-            zealotFractionSlider.disabled = false;
+            redZealotFractionSlider.disabled = false;
+            blueZealotFractionSlider.disabled = false;
             populationSizeSlider.disabled = false;
+            homophilySlider.disabled = false;
             
             // Hide running indicator
             runningIndicator.classList.add('hidden');
@@ -192,36 +197,27 @@ document.addEventListener('DOMContentLoaded', function() {
         simulation.initialize();
         visualizer.initialize(simulation);
         
-        // Display initial statistics
-        const initialStats = simulation.getStatistics();
-        visualizer.update(initialStats);
+        // Allow network to settle before starting interactions
+        runningIndicator.innerHTML = '<div class="spinner"></div><span>Settling network...</span>';
         
-        // Start the simulation
-        isRunning = true;
+        // Run the force simulation for a while to let positions stabilize
+        visualizer.forceSimulation.alpha(1).restart();
+        
+        // Wait for network to settle before starting interactions
         setTimeout(() => {
-            simulation.runInteraction();
-        }, 100);
-    });
-    
-    // Calculate delay between interactions based on simulation speed
-    function calculateInteractionDelay(speed) {
-        // Speed is 1-10, convert to delay (slower = longer delay)
-        // Speed 1 = 500ms, Speed 10 = 10ms
-        return Math.max(10, 550 - (speed * 50));
-    }
-    
-    // Update simulation speed while running
-    function updateSimulationSpeed() {
-        if (nextInteractionTimeout) {
-            clearTimeout(nextInteractionTimeout);
+            runningIndicator.innerHTML = '<div class="spinner"></div><span>Running...</span>';
             
-            // Start next interaction with new delay
-            const delay = calculateInteractionDelay(parseInt(simulationSpeedSlider.value));
-            nextInteractionTimeout = setTimeout(() => {
+            // Display initial statistics
+            const initialStats = simulation.getStatistics();
+            visualizer.update(initialStats);
+            
+            // Start the simulation
+            isRunning = true;
+            setTimeout(() => {
                 simulation.runInteraction();
-            }, delay);
-        }
-    }
+            }, 100);
+        }, 2000); // Allow 2 seconds for network to settle
+    });
     
     // Stop simulation button click handler
     stopButton.addEventListener('click', function() {
@@ -245,8 +241,10 @@ document.addEventListener('DOMContentLoaded', function() {
             startButton.disabled = false;
             stopButton.disabled = true;
             proportionSlider.disabled = false;
-            zealotFractionSlider.disabled = false;
+            redZealotFractionSlider.disabled = false;
+            blueZealotFractionSlider.disabled = false;
             populationSizeSlider.disabled = false;
+            homophilySlider.disabled = false;
             
             // Hide running indicator
             runningIndicator.classList.add('hidden');
@@ -267,6 +265,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         simulation = null;
+        redZealotFractionSlider.disabled = false;
+        blueZealotFractionSlider.disabled = false;
     });
     
     // Function to display final statistics
@@ -291,15 +291,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Initialize slider values
-    document.querySelector('.param-group:nth-child(2) .slider-max').textContent = `${zealotFractionSlider.value}%`;
-    document.querySelector('.param-group:nth-child(3) .slider-max').textContent = populationSizeSlider.value;
-    document.querySelector('.param-group:nth-child(4) .slider-max').textContent = 'Fast';
-    document.querySelector('.param-group:nth-child(5) .slider-max').textContent = `${maxInteractionsSlider.value}K`;
+    document.querySelector('.param-group:nth-child(2) .slider-max').textContent = `${redZealotFractionSlider.value}%`;
+    document.querySelector('.param-group:nth-child(3) .slider-max').textContent = `${blueZealotFractionSlider.value}%`;
+    document.querySelector('.param-group:nth-child(4) .slider-max').textContent = populationSizeSlider.value;
 
-    // Update the maxInteractionsSlider event listener
-    maxInteractionsSlider.addEventListener('input', function() {
-        const maxInteractionsValue = document.querySelector('.param-group:nth-child(5) .slider-max');
-        maxInteractionsValue.textContent = `${this.value}K`;
+    // Update the event listener for the homophily slider
+    homophilySlider.addEventListener('input', function() {
+        const homophilyValue = document.querySelector('.param-group:nth-child(5) .slider-max');
+        homophilyValue.textContent = `${Math.round(this.value * 100)}%`;
         
         // Reset visualization if simulation exists and is complete
         if (simulation && simulation.isComplete) {
@@ -307,4 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
             simulation = null;
         }
     });
+
+    // Initialize homophily slider value
+    document.querySelector('.param-group:nth-child(5) .slider-max').textContent = `${Math.round(homophilySlider.value * 100)}%`;
 });
