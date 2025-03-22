@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update slider values as they change
     redZealotFractionSlider.addEventListener('input', function() {
         const redZealotFractionValue = document.querySelector('.param-group:nth-child(2) .slider-max');
-        redZealotFractionValue.textContent = `${this.value}%`;
+        redZealotFractionValue.textContent = `${Math.round(this.value * 100)}%`;
         
         // Reset visualization if simulation exists and is complete
         if (simulation && simulation.isComplete) {
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     blueZealotFractionSlider.addEventListener('input', function() {
         const blueZealotFractionValue = document.querySelector('.param-group:nth-child(3) .slider-max');
-        blueZealotFractionValue.textContent = `${this.value}%`;
+        blueZealotFractionValue.textContent = `${Math.round(this.value * 100)}%`;
         
         // Reset visualization if simulation exists and is complete
         if (simulation && simulation.isComplete) {
@@ -134,11 +134,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const config = {
             populationSize: parseInt(populationSizeSlider.value),
             redProportion: redProportion,
-            redZealotFraction: parseInt(redZealotFractionSlider.value) / 100,
-            blueZealotFraction: parseInt(blueZealotFractionSlider.value) / 100,
+            redZealotFraction: parseFloat(redZealotFractionSlider.value),
+            blueZealotFraction: parseFloat(blueZealotFractionSlider.value),
             homophily: parseFloat(homophilySlider.value),
-            maxInteractions: 10000, // Set a fixed value instead of using a slider
-            simulationSpeed: 10 // Set to maximum speed by default
+            maxInteractions: 10000,
+            simulationSpeed: 5
         };
         
         // Initialize simulation
@@ -264,6 +264,20 @@ document.addEventListener('DOMContentLoaded', function() {
             stopButton.click();
         }
         
+        // Reset sliders to default values
+        proportionSlider.value = 50;
+        redZealotFractionSlider.value = 0.05;
+        blueZealotFractionSlider.value = 0.05;
+        populationSizeSlider.value = 100;
+        homophilySlider.value = 0.7;
+        
+        // Update slider displays
+        updateProportionControl();
+        document.querySelector('.param-group:nth-child(2) .slider-max').textContent = '5%';
+        document.querySelector('.param-group:nth-child(3) .slider-max').textContent = '5%';
+        document.querySelector('.param-group:nth-child(4) .slider-max').textContent = '100';
+        document.querySelector('.param-group:nth-child(5) .slider-max').textContent = '70%';
+        
         simulation = null;
         redZealotFractionSlider.disabled = false;
         blueZealotFractionSlider.disabled = false;
@@ -290,11 +304,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Initialize slider values
-    document.querySelector('.param-group:nth-child(2) .slider-max').textContent = `${redZealotFractionSlider.value}%`;
-    document.querySelector('.param-group:nth-child(3) .slider-max').textContent = `${blueZealotFractionSlider.value}%`;
-    document.querySelector('.param-group:nth-child(4) .slider-max').textContent = populationSizeSlider.value;
-
     // Update the event listener for the homophily slider
     homophilySlider.addEventListener('input', function() {
         const homophilyValue = document.querySelector('.param-group:nth-child(5) .slider-max');

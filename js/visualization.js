@@ -58,15 +58,9 @@ class OpinionVisualizer {
             
         this.opinionPlotSvg = this.opinionPlotContainer.append('svg')
             .attr('width', this.opinionPlotWidth)
-            .attr('height', this.opinionPlotHeight)  // Use full height
+            .attr('height', this.opinionPlotHeight)
             .style('background-color', '#fff');
-            
-        this.histogramSvg = this.opinionPlotContainer.append('svg')
-            .attr('width', this.opinionPlotWidth)
-            .attr('height', this.plotHeight)
-            .style('position', 'absolute')  // Add absolute positioning
-            .style('top', `${this.plotHeight + 40}px`)  // Position below first plot with gap
-            .style('background-color', '#fff');
+            // .style('border', '2px solid red');  // Add temporary red border
             
         // Create a group for the agent pool visualization - CENTERED POSITIONING
         this.agentPoolGroup = this.agentPoolSvg.append('g')
@@ -141,9 +135,6 @@ class OpinionVisualizer {
             .attr('height', this.agentPoolHeight);
             
         this.opinionPlotSvg
-            .attr('height', this.plotHeight);
-            
-        this.histogramSvg
             .attr('height', this.plotHeight);
             
         // Update group positions - CENTERED POSITIONING
@@ -449,6 +440,10 @@ class OpinionVisualizer {
             .attr('fill', '#666')
             .style('font-size', '14px')
             .text('50%');  // Remove 'Blue'
+
+        // Hide axes, labels, and legend initially
+        this.opinionPlotGroup.selectAll('.x-axis, .y-axis, .x-axis-label, .y-axis-label, .legend')
+            .style('opacity', 0);
     }
     
     /**
@@ -476,8 +471,31 @@ class OpinionVisualizer {
         console.log("Updating x-axis domain:", newDomain);
         this.xScale.domain(newDomain);
         
-        // Update the x-axis with the new domain
-        this.xAxis.call(d3.axisBottom(this.xScale));
+        // Adjust number of ticks based on the range
+        let tickCount = 10; // Default
+        if (newDomain[1] > 1000 && newDomain[1] <= 5000) {
+            tickCount = 5;  // Fewer ticks for 1k-5k range
+        } else if (newDomain[1] > 5000) {
+            tickCount = 3;  // Even fewer ticks for >5k
+        }
+        
+        // Update the x-axis with the new domain and tick count
+        this.xAxis.call(d3.axisBottom(this.xScale).ticks(tickCount));
+        
+        // For line smoothing, update the line generators based on interaction count
+        if (currentInteractions > 5000) {
+            // High smoothing for very large datasets
+            this.redLine.curve(d3.curveBasis);
+            this.blueLine.curve(d3.curveBasis);
+        } else if (currentInteractions > 1000) {
+            // Medium smoothing
+            this.redLine.curve(d3.curveMonotoneX);
+            this.blueLine.curve(d3.curveMonotoneX);
+        } else {
+            // Less smoothing for small datasets
+            this.redLine.curve(d3.curveLinear);
+            this.blueLine.curve(d3.curveLinear);
+        }
         
         // Update lines
         this.opinionPlotGroup.select('.red-line')
@@ -494,6 +512,12 @@ class OpinionVisualizer {
                 const value = i === 0 ? lastState.redProportion : lastState.blueProportion;
                 d3.select(this).text(`${Math.round(value * 100)}%`);
             });
+
+        // Show axes, labels, and legend when data is available
+        if (this.simulation && this.simulation.opinionHistory.length > 0) {
+            this.opinionPlotGroup.selectAll('.x-axis, .y-axis, .x-axis-label, .y-axis-label, .legend')
+                .style('opacity', 1);
+        }
     }
     
     /**
@@ -541,9 +565,11 @@ class OpinionVisualizer {
         const plotWidth = this.opinionPlotWidth - this.margin.left - this.margin.right;
         const plotHeight = this.plotHeight - this.margin.top - this.margin.bottom;
         
-        // Separate agents by opinion
-        const redAgents = this.simulation.agents.filter(a => a.beliefValue < 0);
-        const blueAgents = this.simulation.agents.filter(a => a.beliefValue >= 0);
+        // Separate agents by opinion and zealot status
+        const redNonZealots = this.simulation.agents.filter(a => a.beliefValue < 0 && !a.isZealot);
+        const redZealots = this.simulation.agents.filter(a => a.beliefValue < 0 && a.isZealot);
+        const blueNonZealots = this.simulation.agents.filter(a => a.beliefValue >= 0 && !a.isZealot);
+        const blueZealots = this.simulation.agents.filter(a => a.beliefValue >= 0 && a.isZealot);
 
         const binWidth = 0.1;  // Fixed bin width
         const maxHeight = this.simulation.config.populationSize / 2;  // Fixed y-axis height
@@ -554,17 +580,20 @@ class OpinionVisualizer {
             .thresholds(d3.range(-1.3, 1.3 + binWidth, binWidth));
 
         // Generate histogram data
-        const redBins = histogram(redAgents.map(a => a.beliefValue));
-        const blueBins = histogram(blueAgents.map(a => a.beliefValue));
+        const redNonZealotBins = histogram(redNonZealots.map(a => a.beliefValue));
+        const redZealotBins = histogram(redZealots.map(a => a.beliefValue));
+        const blueNonZealotBins = histogram(blueNonZealots.map(a => a.beliefValue));
+        const blueZealotBins = histogram(blueZealots.map(a => a.beliefValue));
 
         // Set fixed y scale
-        const maxCount = d3.max([...redBins, ...blueBins], d => d.length);
+        const allBins = [...redNonZealotBins, ...redZealotBins, ...blueNonZealotBins, ...blueZealotBins];
+        const maxCount = d3.max(allBins, d => d.length);
         const roundedMax = Math.ceil(maxCount / (this.simulation.config.populationSize/10)) * (this.simulation.config.populationSize/10);
         this.histYScale.domain([0, roundedMax]);
         this.histYAxis.call(d3.axisLeft(this.histYScale).ticks(5));
         
-        // Update bars
-        const updateBars = (data, className, color) => {
+        // Update bars for non-zealots
+        const updateNonZealotBars = (data, className, color) => {
             const bars = this.histogramGroup.selectAll(`.${className}`)
                 .data(data);
                 
@@ -584,8 +613,36 @@ class OpinionVisualizer {
                 .attr('opacity', 0.5);
         };
         
-        updateBars(redBins, 'red-bars', '#ef476f');
-        updateBars(blueBins, 'blue-bars', '#00a6fb');
+        // Update bars for zealots (with black border)
+        const updateZealotBars = (data, className, color) => {
+            const bars = this.histogramGroup.selectAll(`.${className}`)
+                .data(data);
+                
+            // Remove old bars
+            bars.exit().remove();
+            
+            // Add new bars
+            bars.enter()
+                .append('rect')
+                .attr('class', className)
+                .merge(bars)
+                .attr('x', d => this.histXScale(d.x0))
+                .attr('y', d => this.histYScale(d.length))
+                .attr('width', d => Math.max(0, this.histXScale(d.x1) - this.histXScale(d.x0) - 1))
+                .attr('height', d => plotHeight - this.histYScale(d.length))
+                .attr('fill', color)
+                .attr('opacity', 0.7)
+                .attr('stroke', '#000')
+                .attr('stroke-width', 1);
+        };
+        
+        // Draw non-zealots first
+        updateNonZealotBars(redNonZealotBins, 'red-non-zealot-bars', '#ef476f');
+        updateNonZealotBars(blueNonZealotBins, 'blue-non-zealot-bars', '#00a6fb');
+        
+        // Draw zealots on top with black borders
+        updateZealotBars(redZealotBins, 'red-zealot-bars', '#ef476f');
+        updateZealotBars(blueZealotBins, 'blue-zealot-bars', '#00a6fb');
     }
     
     /**
@@ -745,9 +802,18 @@ class OpinionVisualizer {
         // Clear pairing lines
         this.pairingLinesGroup.selectAll('.pairing-line').remove();
         
+        // Clear network edges - add this line
+        if (this.networkEdgesGroup) {
+            this.networkEdgesGroup.selectAll('.network-edge').remove();
+        }
+        
         // Clear opinion plot lines
         this.opinionPlotGroup.select('.red-line').attr('d', null);
         this.opinionPlotGroup.select('.blue-line').attr('d', null);
+        
+        // Hide axes and legend again
+        this.opinionPlotGroup.selectAll('.x-axis, .y-axis, .x-axis-label, .y-axis-label, .legend')
+            .style('opacity', 0);
         
         // Remove final state annotation
         this.opinionPlotGroup.selectAll('.final-state').remove();

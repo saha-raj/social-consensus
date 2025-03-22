@@ -55,22 +55,68 @@ class OpinionDynamicsSimulation {
         const redZealotCount = Math.round(redAgents * this.config.redZealotFraction);
         const blueZealotCount = Math.round(blueAgents * this.config.blueZealotFraction);
         
-        // Create red agents (some zealots, some regular)
+        // Helper function for normal distribution
+        const normalRandom = (mean, stdDev) => {
+            // Box-Muller transform
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            return mean + z * stdDev;
+        };
+        
+        // Generate red agents with normally distributed beliefs
+        let redAgentBeliefs = [];
         for (let i = 0; i < redAgents; i++) {
-            const isZealot = i < redZealotCount;
-            // Random belief value between -1 and 0 for red agents
-            // Zealots are always at -1 (extreme belief)
-            const beliefValue = isZealot ? -1 : -Math.random();
-            this.agents.push(new agentModule.Agent(beliefValue, isZealot, i));
+            // Generate belief values normally distributed around -0.5
+            let beliefValue = normalRandom(-0.5, 0.2);
+            // Ensure values stay between -1 and 0
+            beliefValue = Math.max(-1, Math.min(0, beliefValue));
+            redAgentBeliefs.push({
+                beliefValue: beliefValue,
+                id: i
+            });
         }
         
-        // Create blue agents (some zealots, some regular)
+        // Sort red agents by belief strength (most extreme first)
+        redAgentBeliefs.sort((a, b) => Math.abs(a.beliefValue) - Math.abs(b.beliefValue));
+        redAgentBeliefs.reverse();
+        
+        // Create red agents (assign zealot status to top n%)
+        for (let i = 0; i < redAgentBeliefs.length; i++) {
+            const isZealot = i < redZealotCount;
+            this.agents.push(new agentModule.Agent(
+                redAgentBeliefs[i].beliefValue, 
+                isZealot, 
+                redAgentBeliefs[i].id
+            ));
+        }
+        
+        // Generate blue agents with normally distributed beliefs
+        let blueAgentBeliefs = [];
         for (let i = 0; i < blueAgents; i++) {
+            // Generate belief values normally distributed around +0.5
+            let beliefValue = normalRandom(0.5, 0.2);
+            // Ensure values stay between 0 and 1
+            beliefValue = Math.max(0, Math.min(1, beliefValue));
+            blueAgentBeliefs.push({
+                beliefValue: beliefValue,
+                id: redAgents + i
+            });
+        }
+        
+        // Sort blue agents by belief strength (most extreme first)
+        blueAgentBeliefs.sort((a, b) => Math.abs(a.beliefValue) - Math.abs(b.beliefValue));
+        blueAgentBeliefs.reverse();
+        
+        // Create blue agents (assign zealot status to top n%)
+        for (let i = 0; i < blueAgentBeliefs.length; i++) {
             const isZealot = i < blueZealotCount;
-            // Random belief value between 0 and 1 for blue agents
-            // Zealots are always at 1 (extreme belief)
-            const beliefValue = isZealot ? 1 : Math.random();
-            this.agents.push(new agentModule.Agent(beliefValue, isZealot, redAgents + i));
+            this.agents.push(new agentModule.Agent(
+                blueAgentBeliefs[i].beliefValue, 
+                isZealot, 
+                blueAgentBeliefs[i].id
+            ));
         }
         
         // Set up network connections with homophily
