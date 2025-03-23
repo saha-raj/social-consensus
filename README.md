@@ -1,62 +1,43 @@
-# Prisoner's Dilemma Simulation
+# Social Consensus Simulation
 
-A web-based visualization of the Prisoner's Dilemma simulation that runs entirely in the browser. This application allows users to select competing strategies and visualize how they perform against each other in a population of agents.
+An interactive simulation exploring social consensus formation, polarization, and the influence of zealots in social networks.
+
+## Overview
+
+This project visualizes how opinions spread and evolve in social networks, with a focus on:
+
+- How network structure affects opinion dynamics
+- The role of zealots (individuals with fixed beliefs) in shaping consensus
+- Tipping points where minority opinions can overtake majorities
+- The impact of homophily (preference to connect with similar others)
 
 ## Features
 
-- Select from seven different strategies: Cooperator, Defector, Tit for Tat, Random, Grudger, Detective, and Pavlov
-- Configure population size, total games to play, and games per pairing using intuitive sliders
-- Visualize agent interactions in real-time with a dynamic force-directed layout
-- View score distributions in a dual-sided histogram
-- Track statistics and results as the simulation progresses
+- Interactive visualization of agent interactions in a social network
+- Real-time tracking of opinion distribution over time
+- Histogram showing belief distribution across the population
+- Adjustable parameters:
+  - Initial opinion distribution
+  - Zealot proportions for each group
+  - Population size
+  - Network homophily
 
 ## How It Works
 
-1. **Agent Creation**: The application creates a population of agents distributed equally between two selected strategies.
-2. **Game Rounds**: Agents are randomly paired to play a series of Prisoner's Dilemma games.
-3. **Scoring**: Agents accumulate scores based on their interactions, with their size in the visualization reflecting their performance.
-4. **Visualization**: The process is visualized using D3.js, showing agents, their interactions, and score distributions.
-5. **Analysis**: When the simulation completes, statistics show which strategy performed better.
+The simulation models agents with beliefs ranging from -1 (strong red) to +1 (strong blue). Agents interact through network connections, potentially shifting their beliefs based on these interactions. Zealots maintain fixed beliefs and influence others without being influenced themselves.
 
-## Prisoner's Dilemma Payoffs
+Network connections form with a bias toward similar opinions, controlled by the homophily parameter. Higher homophily creates more segregated communities, while lower homophily allows more cross-group connections.
 
-The classic Prisoner's Dilemma payoff matrix is used:
+## Try It Out
 
-- Both cooperate: 3 points each (mutual cooperation)
-- Both defect: 1 point each (mutual defection)
-- One defects, one cooperates: Defector gets 5 points, cooperator gets 0 points
+Visit the live simulation at: [https://saha-raj.github.io/social-consensus/](https://saha-raj.github.io/social-consensus/)
 
-## Strategies
+## Technical Details
 
-- **Cooperator**: Always cooperates regardless of what the opponent does.
-- **Defector**: Always defects regardless of what the opponent does.
-- **Tit for Tat**: Starts by cooperating, then copies the opponent's previous move.
-- **Random**: Randomly chooses to cooperate or defect with equal probability.
-- **Grudger**: Cooperates until the opponent defects, then always defects.
-- **Detective**: Starts with a specific sequence, then switches to Tit for Tat if the opponent ever defects, otherwise defects.
-- **Pavlov**: Starts by cooperating, then changes strategy only when receiving a low payoff.
+For more information about the model assumptions and mechanics, see the [technical details](docs/technical_details.md).
 
-## Technologies Used
+## Credits
 
-- Vanilla JavaScript for simulation logic
-- D3.js for visualizations
-- HTML/CSS for the user interface
+Created by Raj Saha, PhD
 
-## How to Run
-
-You can run the application in two ways:
-
-1. **Simple Method**: Open the `index.html` file in a modern web browser.
-
-2. **Using the Server**: Run `node server.js` in the project directory to start a local server. The server will automatically try different ports (3000-3005) if the default port is already in use.
-
-## Project Structure
-
-- `index.html`: Main HTML file
-- `css/styles.css`: Styling for the application
-- `js/strategies.js`: Defines different Prisoner's Dilemma strategies
-- `js/game.js`: Implements the core game mechanics
-- `js/tournament.js`: Handles the tournament logic
-- `js/visualization.js`: Manages the D3.js visualization
-- `js/main.js`: Main application logic and initialization
-- `server.js`: Simple HTTP server for local development 
+Inspired by research from Centola et al. (2018) on experimental studies of social consensus. 
