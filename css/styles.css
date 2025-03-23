@@ -868,4 +868,23 @@ button:disabled {
 .param-group:has(input:disabled) label,
 .param-group:has(input:disabled) .slider-minmax {
     opacity: 0.5;
+}
+
+/* Citation styling */
+.citation {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 2rem 0;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.citation a {
+    color: #3a86ff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.citation a:hover {
+    text-decoration: underline;
 } 
