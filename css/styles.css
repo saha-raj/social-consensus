@@ -177,11 +177,9 @@ li {
 /* Three column layout */
 .simulation-grid {
     display: grid;
-    grid-template-columns: minmax(auto, 300px) 600px 500px; /* Increased middle column width */
+    grid-template-columns: 250px 1fr 450px; /* Adjusted to match the width above */
     gap: 20px;
-    width: 100%;
-    align-items: center;
-    justify-content: center; /* Center the grid columns */
+    height: 100%;
 }
 
 /* All columns */
@@ -212,8 +210,10 @@ li {
 
 /* Histogram column specific */
 .histogram-column {
-    width: 500px; /* Keep original width */
-    height: 500px; /* Keep original height */
+    width: 450px; /* Changed from 400px to 450px */
+    max-width: 100%;
+    height: 500px;
+    overflow: hidden;
 }
 
 /* SVG containers */
@@ -780,7 +780,7 @@ select option::before {
 @media (max-width: 1024px) {
     /* Tablet layout - stack in 2 rows */
     .simulation-grid {
-        grid-template-columns: minmax(auto, 300px) 1fr;
+        grid-template-columns: minmax(auto, 400px) 1fr;
         grid-template-areas:
             "controls simulation"
             "histogram histogram";
@@ -849,4 +849,23 @@ select option::before {
 /* Position the running indicator inside the agent-pool-column */
 .agent-pool-column {
     position: relative; /* Make it a positioning context */
+}
+
+/* Add styles for disabled sliders and buttons */
+input[type="range"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #ccc;
+}
+
+/* Style for the disabled slider labels */
+.param-group:has(input:disabled) .param-description,
+.param-group:has(input:disabled) label,
+.param-group:has(input:disabled) .slider-minmax {
+    opacity: 0.5;
 } 

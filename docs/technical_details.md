@@ -1,62 +1,41 @@
-## Technical Details
-
-### Network Structure
-- Agents are connected in a social network with 1-3 neighbors each
-- Connections are influenced by homophily (tendency to connect with similar opinions)
-- Network visualization shows agents (circles) and their connections (gray lines)
-
-For each agent, the probability of connecting to an agent with the same opinion is determined by the homophily parameter $h$:
-$P(\text{same opinion connection}) = h$
-
-### Belief System
-- Each agent has a belief value between -1 and 1
-- Negative values (-1 to 0) represent "red" opinion
-- Positive values (0 to 1) represent "blue" opinion
-- Zealots have extreme beliefs (-1 or 1) that never change
-
-The opinion of an agent is determined by the sign of their belief value:
-$$
-\text{opinion} = \begin{cases} 
-\text{red} & \text{if } b < 0 \\
-\text{blue} & \text{if } b \geq 0
-\end{cases}​
-$$
+# Social Consensus, Polarization, and the Power of Zealots
 
 
-### Interaction Rules
-- Agents interact with their network neighbors
-- Susceptibility to change depends on proportion of opposing neighbors
-- Zealots influence others but never change themselves
-- Non-zealots update beliefs based on their susceptibility and the strength of the other agent's belief
+We're all familiar with the term polarization in the context of social consensus and political beliefs. The basic premise is simple: repeated exposure to shared beliefs strengthens those beliefs, which in turn leads to even greater exposure to similar views. This runaway effect then inevitably produces clusters of opposing beliefs—echo chambers.
 
-Susceptibility is calculated as:
-$$
-S_i = \frac{\text{number of neighbors with opposing opinion}}{\text{total number of neighbors}}
-$$
+While the real world is vastly more complex, this basic mechanism remains a core driver of polarization. We can simulate and visualize these dynamics using simple rules and assumptions. We can also explore the role of zealots—individuals who are stubborn, never change their views, yet constantly proselytize—in shaping how consensus forms and evolves within a social network.
+
+This simulation, inspired by Centola et al. (2018), models two groups of N agents, in proportions k and (1−k), holding opposing beliefs on a scale from −1 to +1. Positive and negative values represent the views of the two groups. Each agent is connected to others—both within their group and, in some cases, across group lines—simulating a social network.
+
+Agents interact pairwise through these connections. Each interaction may shift an agent's belief closer to the other's, depending on various factors such as susceptibility and influence. However, zealots never change their views. Their presence can stabilize, polarize, or even shift consensus in unexpected ways. Through this simulation, we can explore how such simple interaction rules lead to complex collective behavior.
 
 
-For non-zealot interactions, belief updates follow:
-$$
-b_i^{new} = b_i + \text{sign}(b_j - b_i) \cdot 0.1 \cdot S_i \cdot (1 - |b_j|)
-$$
+## Assumptions
 
+This simulation, like all models, makes several simplifying assumptions to help us understand complex social dynamics:
 
-Where:
-- $b_i$ is the belief value of agent $i$
-- $b_j$ is the belief value of the interacting agent $j$
-- $S_i$ is the susceptibility of agent $i$
+- People's beliefs exist on a continuous spectrum, not just binary categories
+- Social influence happens primarily through direct connections
+- People are more susceptible to opposing views when surrounded by them
+- Zealots never change their minds, regardless of social pressure
+- Network connections form with a bias toward similar opinions (homophily)
+- All non-zealot agents follow the same influence rules
 
-### Visualization
-- Agent pool: Network visualization with agents colored by belief
-- Opinion plot: Tracks proportion of red/blue opinions over time
-- Histogram: Shows distribution of belief values
+These assumptions create an idealized model that captures key aspects of opinion dynamics while remaining tractable. Real-world social systems are vastly more complex, with individuals following different influence rules, having varying susceptibilities, and interacting through multiple channels beyond direct connections.
 
-The color intensity of each agent is proportional to their belief strength:
-$\text{opacity} = \max(0.1, |b_i|)$
+The model isn't meant to predict specific real-world outcomes, but rather to help us understand and visualize the mechanisms that might drive polarization and consensus formation in social networks.
 
-### Simulation Parameters
-- Population size: Total number of agents
-- Red/Blue proportion: Initial opinion distribution
-- Zealot fraction: Percentage of agents with unchangeable beliefs
-- Network homophily: Tendency to connect with similar opinions
+## Flipping the Minority
+
+One of the most interesting phenomena this model reveals is how a minority opinion can sometimes overtake the majority.
+
+Two key factors determine whether this happens:
+
+1. **Zealot proportions**: When one side has more zealots than the other, they exert disproportionate influence. Even a small group of unwavering believers can gradually pull the entire population toward their view if the opposing side has fewer zealots.
+
+2. **Network homophily**: The degree to which people connect with like-minded others dramatically affects opinion spread. Higher homophily creates echo chambers that slow down opinion change, while lower homophily allows minority views to spread more easily through cross-group connections.
+
+The interplay between these factors creates tipping points where small changes in initial conditions can lead to dramatically different outcomes. For example, a slight increase in red zealots might flip a predominantly blue population to red, even when starting with fewer red agents overall.
+
+This helps explain why seemingly stable social consensus can sometimes rapidly shift, and why vocal minorities can sometimes have outsized influence on public opinion.
 

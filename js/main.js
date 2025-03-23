@@ -108,6 +108,22 @@ document.addEventListener('DOMContentLoaded', function() {
         opinionPlotContainer: 'opinion-plot-container'
     });
     
+    // Track whether simulation has been auto-started
+    let hasAutoStarted = false;
+
+    // Create an Intersection Observer to detect when simulation container is visible
+    const observer = new IntersectionObserver((entries) => {
+        // If simulation container is visible and we haven't auto-started yet
+        if (entries[0].isIntersecting && !hasAutoStarted && !isRunning) {
+            hasAutoStarted = true;
+            // Simulate clicking the start button
+            startButton.click();
+        }
+    }, { threshold: 0.5 }); // Trigger when at least 50% of the element is visible
+
+    // Start observing the simulation container
+    observer.observe(document.querySelector('.simulation-container'));
+    
     // Start simulation button click handler
     startButton.addEventListener('click', function() {
         if (isRunning) return;

@@ -129,31 +129,63 @@ class OpinionVisualizer {
         this.opinionPlotWidth = this.opinionPlotContainer.node().clientWidth;
         this.opinionPlotHeight = this.opinionPlotContainer.node().clientHeight || 500;
         
+        // Update the plot height (half of container height)
+        this.plotHeight = (this.opinionPlotHeight / 2) - 20;  // -20 for gap between plots
+        
         // Update SVG dimensions
         this.agentPoolSvg
             .attr('width', this.agentPoolWidth)
             .attr('height', this.agentPoolHeight);
             
         this.opinionPlotSvg
-            .attr('height', this.plotHeight);
-            
-        // Update group positions - CENTERED POSITIONING
-        this.agentPoolGroup
-            .attr('transform', `translate(${this.agentPoolWidth / 2}, ${this.agentPoolHeight / 2})`);
+            .attr('width', this.opinionPlotWidth)  // Add this line to update width
+            .attr('height', this.opinionPlotHeight);
             
         // Update the area radius
         this.areaRadius = Math.min(this.agentPoolWidth * 0.4, this.agentPoolHeight / 2) * 0.9;
         
-        // Update the opinion plot
-        this.updateOpinionPlot();
+        // Update group positions - CENTERED POSITIONING
+        this.agentPoolGroup
+            .attr('transform', `translate(${this.agentPoolWidth / 2}, ${this.agentPoolHeight / 2})`);
+            
+        // Update the opinion plot group position
+        this.opinionPlotGroup
+            .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+            
+        // Update the histogram group position
+        this.histogramGroup
+            .attr('transform', `translate(${this.margin.left}, ${this.opinionPlotHeight/2 + this.margin.top})`);
         
-        // Update the histogram
-        this.updateHistogram();
+        // Recalculate scales with new dimensions
+        const plotWidth = this.opinionPlotWidth - this.margin.left - this.margin.right;
+        
+        // Update x scale for opinion plot
+        if (this.xScale) {
+            this.xScale.range([0, plotWidth]);
+            // Update x-axis
+            if (this.opinionPlotGroup.select('.x-axis').size()) {
+                this.opinionPlotGroup.select('.x-axis')
+                    .attr('transform', `translate(0, ${this.plotHeight - this.margin.top - this.margin.bottom})`)
+                    .call(d3.axisBottom(this.xScale));
+            }
+        }
+        
+        // Update x scale for histogram
+        if (this.histXScale) {
+            this.histXScale.range([0, plotWidth]);
+            // Update x-axis
+            if (this.histogramGroup.select('.x-axis').size()) {
+                this.histogramGroup.select('.x-axis')
+                    .attr('transform', `translate(0, ${this.plotHeight - this.margin.top - this.margin.bottom})`)
+                    .call(d3.axisBottom(this.histXScale));
+            }
+        }
         
         // Update the visualization
         if (this.simulation) {
             const stats = this.simulation.getStatistics();
-            this.update(stats);
+            this.updateOpinionPlot();
+            this.updateHistogram();
         }
     }
     
@@ -408,38 +440,38 @@ class OpinionVisualizer {
             .attr('stroke', '#00a6fb')
             .attr('stroke-width', 2);
             
-        // Add legend with circular markers and current values
+        // Add legend with circular markers and current values - positioned at top left
         const legend = this.opinionPlotGroup.append('g')
             .attr('class', 'legend')
-            .attr('transform', `translate(${plotWidth - 100}, 10)`);  // Move up from 20 to 10
+            .attr('transform', `translate(10, 8)`);  // Move up from 10 to 8
             
         // Red opinion legend
         legend.append('circle')
             .attr('cx', 7)
             .attr('cy', 7)
-            .attr('r', 7)
+            .attr('r', 5)
             .attr('fill', '#ef476f');
             
         legend.append('text')
-            .attr('x', 20)
-            .attr('y', 10)
-            .attr('fill', '#666')
-            .style('font-size', '14px')
-            .text('50%');  // Remove 'Red'
+            .attr('x', 18)
+            .attr('y', 11)
+            .attr('fill', '#888')
+            .style('font-size', '12px')
+            .text('50%');
             
-        // Blue opinion legend
+        // Blue opinion legend - increase spacing
         legend.append('circle')
-            .attr('cx', 7)
-            .attr('cy', 32)
-            .attr('r', 7)
+            .attr('cx', 60)  // Increase from 50 to 60
+            .attr('cy', 7)
+            .attr('r', 5)
             .attr('fill', '#00a6fb');
             
         legend.append('text')
-            .attr('x', 20)
-            .attr('y', 35)
-            .attr('fill', '#666')
-            .style('font-size', '14px')
-            .text('50%');  // Remove 'Blue'
+            .attr('x', 71)  // Increase from 61 to 71
+            .attr('y', 11)
+            .attr('fill', '#888')
+            .style('font-size', '12px')
+            .text('50%');
 
         // Hide axes, labels, and legend initially
         this.opinionPlotGroup.selectAll('.x-axis, .y-axis, .x-axis-label, .y-axis-label, .legend')
@@ -802,7 +834,7 @@ class OpinionVisualizer {
         // Clear pairing lines
         this.pairingLinesGroup.selectAll('.pairing-line').remove();
         
-        // Clear network edges - add this line
+        // Clear network edges
         if (this.networkEdgesGroup) {
             this.networkEdgesGroup.selectAll('.network-edge').remove();
         }
@@ -814,6 +846,9 @@ class OpinionVisualizer {
         // Hide axes and legend again
         this.opinionPlotGroup.selectAll('.x-axis, .y-axis, .x-axis-label, .y-axis-label, .legend')
             .style('opacity', 0);
+        
+        // Clear histogram completely - remove all elements
+        this.histogramGroup.selectAll('*').remove();
         
         // Remove final state annotation
         this.opinionPlotGroup.selectAll('.final-state').remove();
