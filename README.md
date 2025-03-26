@@ -42,6 +42,6 @@ This simulation is inspired by research on tipping points in social convention:
 
 Damon Centola, Joshua Becker, Devon Brackbill, and Andrea Baronchelli. "Experimental evidence for tipping points in social convention." *Science*, 360(6393), 1116-1119 (2018). DOI: [10.1126/science.aas8827](https://doi.org/10.1126/science.aas8827)
 
-## Credits
+## Author
 
 Created by Raj Saha, PhD 
